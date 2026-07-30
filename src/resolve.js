@@ -118,7 +118,7 @@ function resolveOwned(id, owned) {
     slug,
     ...(owned.aliases ?? []).filter((a) => typeof a === "string").map((a) => a.toLowerCase()),
   ]);
-  return {
+  const result = {
     id,
     name,
     context: owned.context ?? "",
@@ -136,6 +136,15 @@ function resolveOwned(id, owned) {
     // carries an explicit kind for a consumer to filter on.
     kind: owned.kind === "tide" ? "tide" : "current",
   };
+  // The effective reference tide port for a paired tide+current view: a gate's
+  // explicit `tideReference`, or - for a gate CHS publishes no current station
+  // for - its `derived.reference`. One field so the consumer reads one thing;
+  // the raw distinction (proximity pairing vs slack derivation) stays in the
+  // registry for the slack path. Conditionally present, like positionVerified:
+  // a tide port and a genuinely unpaired gate carry none.
+  const tideReference = owned.tideReference ?? owned.derived?.reference;
+  if (tideReference !== undefined) result.tideReference = tideReference;
+  return result;
 }
 
 function nearestPlace(station, gazetteer) {

@@ -101,6 +101,13 @@ const fromRegistry: Resolver = createResolver({ corrections, gazetteer, registry
 const byIdAlone: ResolvedStation = fromRegistry({ id: "chs-dodd-narrows" });
 const bundledById: ResolvedStation = resolve({ id: "chs-dodd-narrows" });
 
+// The paired-view fields: a gate's effective tide reference on the resolved
+// record, and the raw pairing fields on a registry entry. All optional.
+const pairedRef: string | undefined = byIdAlone.tideReference;
+const rawRef: string | undefined = entry?.tideReference;
+const derivedRef: string | undefined = entry?.derived?.reference;
+const derivedLag: number | undefined = entry?.derived?.hwLagMinutes;
+
 // validatePositions and coverageWarnings are widened to accept either file -
 // exercise both shapes, not just Corrections.
 const registryPositionProblems: string[] = validatePositions(reg);
@@ -115,7 +122,7 @@ const slugProblems: string[] = checkSlugs(rereadSlugsLock, corrections, reg);
 export const surface = {
   resolved, name, context, cities, aliases, corrected, lat, verified, formerSlugs,
   own, bare, noArgs, byIdAlone, bundledById, problems, limit, cleaned, slug, reread, movedIds, unchanged,
-  reg, entry, regProblems, fromRegistry,
+  reg, entry, regProblems, fromRegistry, pairedRef, rawRef, derivedRef, derivedLag,
   registryPositionProblems, correctionsCoverage, registryCoverage,
   slugsLock, rereadSlugsLock, slugProblems,
 };

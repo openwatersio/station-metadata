@@ -20,6 +20,19 @@
 # - it is still a gate - but a consumer reads its slack from the reference, not
 # from a fitted current series.
 #
+# A fitted current gate (one with its own CHS current predictions) may instead
+# carry a `tideReference`: the registry key of the tide reference port whose
+# water a paired tide+current view shows beside it. Sourcing rule, applied to
+# every pair below and verifiable from the positions in this file: the
+# `tideReference` is the *nearest* of the tide reference ports (kind: tide) in
+# the same tidal regime - chosen by position, not guessed. The two a mariner
+# would double-check both match standard published secondary-reference practice:
+# Seymour Narrows -> Campbell River, and Sechelt Rapids (Skookumchuck) -> Point
+# Atkinson (Ports and Passes / Waggoner). A gate with no honestly-near reference
+# port carries none: unpaired beats a wrong pairing. Distinct from and mutually
+# exclusive with `derived` - tideReference is a display companion, derived is
+# where slack comes from - and only an ordinary current gate carries either.
+#
 # Keys match what chs-constituents emits ("chs-" + slug of the label), so a
 # consumer can resolve straight from the id in its own output.
 #

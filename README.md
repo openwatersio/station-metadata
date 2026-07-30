@@ -129,6 +129,17 @@ Both rules are expansion-friendly and rule-governed; neither is a cap. A consume
 pick the right CHS series (currents vs tides) when resolving a station to live data. `kind` is the
 only field that differs by class — everything else is the same shape.
 
+**Pairing a gate to a tide port.** A current gate can name a `tideReference` — the registry key of
+the tide reference port whose water a paired tide+current view shows beside it (say
+`chs-seymour-narrows` → `chs-campbell-river`). It is the *nearest* reference port in the same tidal
+regime, and it is **optional**: a gate with no honestly-near port stays unpaired and a consumer
+shows currents alone. A gate CHS publishes no current station for instead carries a `derived`
+block — `reference` (the tide port) plus `hwLagMinutes` / `lwLagMinutes` — and reads its slack from
+that port's high and low water. The two are mutually exclusive; a tide port carries neither.
+`resolve()` surfaces the effective reference (explicit or derived) as `tideReference` on the
+resolved record, so the paired view reads one field. See [PROVENANCE.md](PROVENANCE.md) for how a
+pairing is sourced.
+
 The registry ships **no provider-minted identifier.** The key, `chs-dodd-narrows`, is the public
 id — stable and safe in a URL. Joining this record to a provider's live data (a CHS gate's
 current fitting, say) is done by **name**, and the provider's own opaque handle is resolved at

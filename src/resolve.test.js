@@ -322,3 +322,34 @@ test("a registry station with a malformed position throws a clear, actionable er
     /chs-broken/,
   );
 });
+
+test("a gate's tideReference flows through to the resolved record", () => {
+  const paired = new Map([
+    ["chs-vic", { name: "Victoria", position: [48.424, -123.371], provider: "chs", kind: "tide" }],
+    ["chs-gate", { name: "Gate", position: [49.1, -123.1], provider: "chs", tideReference: "chs-vic" }],
+  ]);
+  const r = createResolver({ registry: paired })({ id: "chs-gate" });
+  assert.equal(r.tideReference, "chs-vic");
+});
+
+test("an unpaired gate carries no tideReference on the resolved record", () => {
+  // chs-dodd-narrows in the shared fixture pairs to nothing - the key must be
+  // absent, not present-and-undefined, matching how positionVerified behaves.
+  // (`derived` is a different field entirely - the gazetteer-context boolean.)
+  const r = withRegistry({ id: "chs-dodd-narrows" });
+  assert.ok(!("tideReference" in r));
+});
+
+test("a derived gate resolves with tideReference set to its derived reference", () => {
+  // A gate CHS publishes no current station for carries a `derived` block, not
+  // a `tideReference`. The resolved record surfaces the *effective* reference
+  // tide port either way - the paired-tide view needs one field, not two - and
+  // for a derived gate that is derived.reference.
+  const dr = new Map([
+    ["chs-pa", { name: "Point Atkinson", position: [49.337, -123.254], provider: "chs", kind: "tide" }],
+    ["chs-malibu", { name: "Malibu", position: [50.16, -123.85], provider: "chs",
+      derived: { reference: "chs-pa", hwLagMinutes: 25, lwLagMinutes: 35 } }],
+  ]);
+  const r = createResolver({ registry: dr })({ id: "chs-malibu" });
+  assert.equal(r.tideReference, "chs-pa");
+});

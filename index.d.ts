@@ -82,6 +82,13 @@ export interface ResolvedStation {
    * a registry entry with no `kind` resolves to `"current"`.
    */
   kind?: "tide" | "current";
+  /**
+   * The effective reference tide port for a paired tide+current view — the
+   * registry key of a current gate's `tideReference`, or, for a gate whose
+   * slack is derived, its `derived.reference`. Present only when the gate names
+   * one; a tide port and a genuinely unpaired gate carry none.
+   */
+  tideReference?: string;
 }
 
 export type Resolver = (station: Station | StationRef) => ResolvedStation;
@@ -195,6 +202,21 @@ export interface RegistryStation {
    * until tide ports arrived, so an omitted `kind` means `"current"`.
    */
   kind?: "tide" | "current";
+  /**
+   * Registry key of the CHS reference tide port shown beside this gate in a
+   * paired tide+current view — a curated proximity pairing, not a derivation.
+   * Only an ordinary current gate carries one: a tide port is the thing
+   * referenced, and a derived gate names its port via `derived.reference`.
+   * Mutually exclusive with `derived`; validated by `validateRegistry`.
+   */
+  tideReference?: string;
+  /**
+   * Marks a current gate CHS publishes no current station for: slack is derived
+   * from a reference tide port's high/low water plus a fixed per-gate lag,
+   * rather than from a fitted current series. `reference` is the tide port's
+   * registry key. Mutually exclusive with `tideReference`.
+   */
+  derived?: { reference: string; hwLagMinutes: number; lwLagMinutes: number };
 }
 
 /** Registry entries keyed by stable station id, e.g. `chs-dodd-narrows`. */
