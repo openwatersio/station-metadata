@@ -69,10 +69,11 @@ function titleCaseWord(word, first) {
 function toNauticalMiles(name) {
   return name.replace(DISTANCE, (_, value, unit) => {
     // Already nautical: only the spelling changes, so the number is re-emitted
-    // verbatim rather than round-tripped. Number() drops a trailing ".0" on a
-    // converted value, so a whole number of miles stays whole.
+    // verbatim rather than round-tripped. A converted one gets one decimal -
+    // the precision NOAA itself writes, and the format its own nautical
+    // qualifiers ("3.0 nm NE of") already use, so a list of them agrees.
     if (unit[0].toLowerCase() === "n") return `${value} nm`;
-    return `${Number((Number(value) * NM_PER_MILE).toFixed(1))} nm`;
+    return `${(Number(value) * NM_PER_MILE).toFixed(1)} nm`;
   });
 }
 

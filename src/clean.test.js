@@ -56,8 +56,10 @@ test("states distance in nautical miles, whatever unit the provider used", () =>
   assert.equal(cleanName("Browns Point, 1.6 miles North of"), "Browns Point, 1.4 nm North of");
   assert.equal(cleanName("Alki Point, 1 mile West of"), "Alki Point, 0.9 nm West of");
   assert.equal(cleanName("Chernof Point, 0.8mile off"), "Chernof Point, 0.7 nm off");
-  // A whole number stays whole rather than gaining a pointless ".0".
-  assert.equal(cleanName("Naselle River, 8 miles above swing bridge"), "Naselle River, 7 nm above swing bridge");
+  // One decimal on a converted value, so it agrees with the nautical
+  // qualifiers NOAA writes that way already ("3.0 nm NE of").
+  assert.equal(cleanName("Ediz Hook Light, 1.2 miles N of"), "Ediz Hook Light, 1.0 nm N of");
+  assert.equal(cleanName("Naselle River, 8 miles above swing bridge"), "Naselle River, 7.0 nm above swing bridge");
 });
 
 test("spells every nautical unit the one way, without touching the number", () => {
