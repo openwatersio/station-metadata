@@ -63,10 +63,16 @@ Every lookup resolves highest-first:
    Flagged `derived: true`.
 4. **Source data** — the provider's own name, cleaned.
 
-Cleaning only re-cases names that are **entirely** upper case. Mixed-case names were typed by a
+Cleaning only re-cases words that are **entirely** upper case. Mixed-case names were typed by a
 human and may carry capitalisation we cannot reconstruct — `Spee-Bi-Dah`, `La Push`, `McArthur`
 pass through untouched. Abbreviations that read badly are expanded: `NAS` → Naval Air Station,
-`ent.` → Entrance, `St. Park` → State Park.
+`ent.` → Entrance, `St. Park` → State Park. Abbreviations that are already right are left alone:
+every compass point (`SSE` is a bearing, not a word to title-case), plus `LB`, `ICW`, `ICWW`,
+`RR`, `NM`, `US`, `BC`, `USCG`.
+
+Distance is stated in nautical miles whatever unit the provider wrote — `7.6 mi.` → `6.6 nm`,
+`0.4 nmi.` → `0.4 nm`. NOAA mixes units inside one dataset, so without this a card can show the
+station's own qualifier in statute miles above a range the app computed in nautical.
 
 ## The corrections file
 

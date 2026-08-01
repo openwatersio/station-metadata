@@ -160,6 +160,21 @@ test("abbreviations expand on both sides of the split", () => {
   assert.equal(r.context, "Mosquito Pass · San Juan Island");
 });
 
+// The qualifier a NOAA current station carries is a bearing off a landmark, and
+// it is what a card renders under the station name. It reached the card as
+// "7.6 mi. Sse" - a title-cased compass point, in statute miles above a range
+// the consumer computes in nautical.
+test("a bearing qualifier keeps its compass point and states range in nautical miles", () => {
+  const r = splitResolve({
+    id: "noaa/104",
+    name: "Discovery Island, 7.6 mi. SSE of",
+    latitude: 48.35,
+    longitude: -123.16,
+  });
+  assert.equal(r.name, "Discovery Island");
+  assert.equal(r.context, "6.6 nm SSE of");
+});
+
 test("a parenthetical in the name survives the split", () => {
   const r = splitResolve({
     id: "noaa/103",
