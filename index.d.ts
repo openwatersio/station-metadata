@@ -39,6 +39,12 @@ export interface GazetteerPlace {
   region: string;
   latitude: number;
   longitude: number;
+  /**
+   * Weights the pick so a town beats a neighbourhood a little closer. Optional:
+   * a hand-written gazetteer carries none, and a place without one competes on
+   * distance alone. `data/places.json` sets it on every entry.
+   */
+  population?: number;
 }
 
 /** One record in the corrections file. Every field is optional except `reason`, which `position` requires. */
@@ -101,6 +107,22 @@ export type Corrections = Map<string, Correction>;
 
 /** Build a resolver over the corrections and gazetteer this package ships. Runs in Node and in the browser. */
 export function createBundledResolver(): Resolver;
+
+/**
+ * The same resolver, deriving contexts from the national `data/places.json`
+ * rather than the 19-town gazetteer. The list is a parameter because it is
+ * ~890 KB and must not load eagerly into a browser bundle:
+ *
+ *     import places from "@sailingnaturali/station-corrections/data/places.json" with { type: "json" };
+ *     const resolve = createPlacesResolver(places);
+ */
+export function createPlacesResolver(places: GazetteerPlace[]): Resolver;
+
+/** Beyond this many kilometres, no place is offered as a station's context. */
+export const DERIVED_MAX_KM: number;
+
+/** Kilometres of closeness a place's size may outweigh, per decade of population above 1000. */
+export const RECOGNITION_KM: number;
 
 /** Build a resolver over your own corrections and gazetteer. */
 export function createResolver(options?: {

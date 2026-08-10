@@ -3,7 +3,7 @@ import corrections from "../data/corrections.json" with { type: "json" };
 import gazetteer from "../data/gazetteer.json" with { type: "json" };
 import registry from "../data/registry.json" with { type: "json" };
 
-export { createResolver } from "./resolve.js";
+export { createResolver, DERIVED_MAX_KM, RECOGNITION_KM } from "./resolve.js";
 export {
   loadCorrections,
   validateCorrections,
@@ -39,5 +39,32 @@ export function createBundledResolver() {
     corrections: new Map(Object.entries(corrections)),
     registry: new Map(Object.entries(registry)),
     gazetteer,
+  });
+}
+
+/**
+ * The same resolver, deriving contexts from the national `data/places.json`
+ * instead of the 19-town gazetteer — "~Nanaimo, BC" where the bundled resolver
+ * has nothing to say.
+ *
+ * The places list is a PARAMETER, not an import, and that is the whole point.
+ * At ~890 KB it is the second thing after the coastline that must not load
+ * eagerly with this module: `createBundledResolver` is called at runtime in a
+ * browser (slackwater-web's src/tides.ts), whose entry bundle is 580 KB, and
+ * importing places here would nearly triple it for an offline-first PWA's
+ * first paint. Consumers that want national contexts are build-time
+ * generators, and they can afford to read the file:
+ *
+ *     import places from "@sailingnaturali/station-corrections/data/places.json" with { type: "json" };
+ *     const resolve = createPlacesResolver(places);
+ *
+ * Corrections and the registry still win over a derived context, exactly as
+ * they do in `createBundledResolver` — this changes the bottom tier only.
+ */
+export function createPlacesResolver(places) {
+  return createResolver({
+    corrections: new Map(Object.entries(corrections)),
+    registry: new Map(Object.entries(registry)),
+    gazetteer: places,
   });
 }

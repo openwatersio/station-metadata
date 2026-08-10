@@ -60,6 +60,29 @@ The honest summary: the *names, context, and positions* are our work, and there 
 provider handle in the published data at all — the one field that would point *into* a
 provider's system is the one field we chose not to ship.
 
+## The one third-party dataset: `data/places.json`
+
+Everything above is about *station* identity, and none of it changes. `data/places.json` is
+not station identity — it is a list of **towns**, used only to derive a fallback caption
+("~Nanaimo, BC") for a station that neither the registry nor the corrections file names.
+
+It is a filtered extract of **GeoNames cities500, CC BY 4.0** — a genuine third-party
+dataset, redistributed under its licence with attribution in [NOTICE](NOTICE). That is a
+deliberate exception to the rule above, and it is worth being precise about why it is not a
+contradiction:
+
+- The rule is *don't redistribute a **provider's** station file* — CHS's or NOAA's list of the
+  things we publish records about. GeoNames publishes no tide or current stations, so nothing
+  here overlaps a provider's compilation.
+- CC BY **grants** redistribution outright. The concern the rule exists to prevent — a
+  licence term binding us because we shipped someone's file — is answered by complying with
+  it, which costs one attribution line.
+- A derived caption is the lowest tier and is always beaten by a curated `context`. Making
+  any one station's label better still means writing it in the registry, by hand, as before.
+
+If that trade ever stops being worth it, the exit is cheap: drop the file, and every station
+falls back to whatever coarse label the consumer already has.
+
 ## Human review
 
 Every station's identity is reviewed by a person before it lands. Positions are audited

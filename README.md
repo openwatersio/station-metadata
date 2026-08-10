@@ -59,8 +59,15 @@ Every lookup resolves highest-first:
 1. **Registry** — `data/registry.yaml`. Stations whose identity this package owns rather than
    corrects, because there is no upstream to correct. Resolves from an id alone.
 2. **Curated override** — anything in `data/corrections.yaml` wins over provider data.
-3. **Derived fallback** — nearest place from the bundled gazetteer, so context is never empty.
-   Flagged `derived: true`.
+3. **Derived fallback** — nearest place, flagged `derived: true`, rendered `~Nanaimo, BC`. The
+   pick is nearest-with-a-population-credit, so a town beats a neighbourhood a kilometre closer
+   (a Victoria gauge reads `~Victoria, BC`, not `~Tillicum, BC`). Nothing is offered past
+   `DERIVED_MAX_KM`: a station in empty water gets an empty context, on purpose, so a consumer can
+   fall through to its own coarse label rather than print a town 90 km away.
+
+   `createBundledResolver` derives from the 19-town `data/gazetteer.json`. For national coverage
+   pass the ~890 KB `data/places.json` to `createPlacesResolver` — it is opt-in for the same reason
+   the coastline is, and belongs in a build-time generator rather than a browser bundle.
 4. **Source data** — the provider's own name, cleaned.
 
 Cleaning only re-cases words that are **entirely** upper case. Mixed-case names were typed by a
@@ -282,6 +289,10 @@ If a station looks wrong in an app built on this, a one-line PR fixes it for eve
   ODbL, clipped to the Salish Sea. Natural Earth 1:10m was measured and rejected: it reads the
   Anacortes area as water and Friday Harbor as land, generalising the San Juans away entirely.
 - **Corrections and gazetteer** — hand-written here, MIT with the package.
+- **Places** (`data/places.json`) — derived from [GeoNames](https://www.geonames.org/) cities500,
+  **CC BY 4.0**, filtered to US/Canada populated places near ocean or Great Lakes water. This is
+  the one dataset here that carries a third-party licence: attribution is in [NOTICE](NOTICE), and
+  the filter is in `scripts/build-places.mjs`. Everything else in the package stays MIT.
 - **Station identity** (names, contexts, positions) — our own facts, independently
   obtained and human-reviewed, not a copy of any provider's station file. No provider-minted
   identifier ships at all. Field-by-field provenance and the reasoning are in

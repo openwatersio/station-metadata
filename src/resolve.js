@@ -21,6 +21,32 @@ function splitQualifier(cleaned) {
 }
 
 /**
+ * Past this, no place is a useful label for a station. A gauge in a BC inlet
+ * told it is "~Prince Rupert, BC" from 90 km away has learned nothing, and the
+ * consumer's own coarse fallback (a coast, a province) is the more honest
+ * answer. Stations beyond every place resolve to an empty context on purpose.
+ */
+export const DERIVED_MAX_KM = 40;
+
+/**
+ * How much a place's size is allowed to outweigh a rival's closeness, in
+ * kilometres per decade of population above 1000.
+ *
+ * Pure nearest-wins picks the obscure name: a Victoria tide gauge came out
+ * "~Tillicum, BC" — a neighbourhood 2 km off — over Victoria itself at 4 km,
+ * and a Halifax gauge came out "~Dartmouth, NS" across the harbour. A reader
+ * wants the place they have heard of. At 3 km/decade, Victoria (290k, ~2.5
+ * decades → 7.4 km of credit) beats Tillicum, while genuinely local answers
+ * survive: Sointula (513), Metchosin (5k) and Brentwood Bay (7.6k) all still
+ * win where they are actually the nearest thing.
+ *
+ * ponytail: one knob, tuned against the shipped CHS station list. Raise it and
+ * big cities start swallowing real small-town answers — 5 already pulled a
+ * Cardale Point label 2 km further out to reach Ladysmith.
+ */
+export const RECOGNITION_KM = 3;
+
+/**
  * Build a resolver over a corrections map and a gazetteer.
  *
  * Resolution order, highest first:
@@ -29,7 +55,17 @@ function splitQualifier(cleaned) {
  *   1. curated override — anything in the corrections file wins
  *   2. source data — the provider's own name, cleaned and, if it carries a
  *      comma qualifier, split into a name and a context
- *   3. derived fallback — nearest gazetteer place, so context is never empty
+ *   3. derived fallback — nearest place, within DERIVED_MAX_KM
+ *
+ * `gazetteer` is any list of places. Two ship with this package and they are
+ * not interchangeable:
+ *   - `data/gazetteer.json` — 19 hand-curated Salish towns, what
+ *     `createBundledResolver` uses. Also answers "where is the *user*", where
+ *     a place name is a stable key for a saved choice.
+ *   - `data/places.json` — 9,660 GeoNames places, national coverage, what
+ *     `createPlacesResolver` uses. Labels a *station*; the names are captions
+ *     nobody stores. Opt-in because it is ~890 KB, and the consumers that want
+ *     it are build-time generators rather than browser bundles.
  */
 export function createResolver({ corrections = new Map(), gazetteer = [], registry = new Map() } = {}) {
   return function resolve(station) {
@@ -54,7 +90,10 @@ export function createResolver({ corrections = new Map(), gazetteer = [], regist
     if (!context) {
       const nearest = nearestPlace(station, gazetteer);
       if (nearest && !namesOverlap(name, nearest.name)) {
-        context = `near ${nearest.name}, ${nearest.region}`;
+        // "~" carries "near" in one character. The label sits under a station
+        // name in a mono caption on a phone, where the word costs a line break
+        // that the glyph does not.
+        context = `~${nearest.name}, ${nearest.region}`;
         derived = true;
       }
     }
@@ -147,13 +186,26 @@ function resolveOwned(id, owned) {
   return result;
 }
 
+/**
+ * The place that best labels this station: nearest, with a population credit
+ * so a recognisable town beats a neighbourhood a kilometre closer. Places
+ * beyond DERIVED_MAX_KM are not candidates at all, so a station in empty water
+ * gets no place rather than a distant one.
+ *
+ * A place with no `population` scores as if it had 1000 — no credit, pure
+ * distance. That is what keeps a hand-written gazetteer (which carries no
+ * populations) resolving exactly as it did before this weighting existed.
+ */
 function nearestPlace(station, gazetteer) {
   let best = null;
-  let bestKm = Infinity;
+  let bestScore = Infinity;
   for (const place of gazetteer) {
     const km = distanceKm(station.latitude, station.longitude, place.latitude, place.longitude);
-    if (km < bestKm) {
-      bestKm = km;
+    if (km > DERIVED_MAX_KM) continue;
+    const decades = Math.log10(Math.max(place.population ?? 0, 1000) / 1000);
+    const score = km - RECOGNITION_KM * decades;
+    if (score < bestScore) {
+      bestScore = score;
       best = place;
     }
   }

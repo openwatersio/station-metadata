@@ -48,8 +48,55 @@ test("an uncorrected station still gets a cleaned name and a slug", () => {
 
 test("context falls back to the nearest gazetteer place", () => {
   const r = resolve({ id: "noaa/2", name: "Jim Creek", latitude: 48.187, longitude: -124.063 });
-  assert.equal(r.context, "near Forks, WA");
+  assert.equal(r.context, "~Forks, WA");
   assert.equal(r.derived, true);
+});
+
+test("no place is offered beyond DERIVED_MAX_KM", () => {
+  // Mid-Pacific. Telling this station it is "~Forks, WA" would be worse than
+  // telling it nothing, which is what the empty context lets a consumer do:
+  // fall through to its own coarse label.
+  const r = resolve({ id: "noaa/far", name: "Nowhere Bank", latitude: 40, longitude: -140 });
+  assert.equal(r.context, "");
+  assert.equal(r.derived, false);
+});
+
+test("a recognisable town outweighs a neighbourhood that is slightly closer", () => {
+  // The shipped failure: a Victoria gauge labelled "~Tillicum, BC" (a
+  // neighbourhood 2 km off) instead of Victoria at 4 km.
+  const withPopulations = createResolver({
+    gazetteer: [
+      { name: "Tillicum", region: "BC", latitude: 48.452, longitude: -123.386, population: 10080 },
+      { name: "Victoria", region: "BC", latitude: 48.4284, longitude: -123.3656, population: 289625 },
+    ],
+  });
+  const r = withPopulations({
+    id: "chs/1", name: "Selkirk Water", latitude: 48.4483, longitude: -123.3831,
+  });
+  assert.equal(r.context, "~Victoria, BC");
+});
+
+test("a small place still wins when it is genuinely the nearest thing", () => {
+  // The weighting must not let a distant city swallow the local answer: a
+  // village 8 km away beats a city 60 km away, which is also past the cap.
+  const withPopulations = createResolver({
+    gazetteer: [
+      { name: "Sointula", region: "BC", latitude: 50.6316, longitude: -127.0263, population: 513 },
+      { name: "Victoria", region: "BC", latitude: 48.4284, longitude: -123.3656, population: 289625 },
+    ],
+  });
+  const r = withPopulations({
+    id: "chs/2", name: "Alert Bay", latitude: 50.5853, longitude: -126.9319,
+  });
+  assert.equal(r.context, "~Sointula, BC");
+});
+
+test("a place with no population competes on distance alone", () => {
+  // A hand-written gazetteer carries no populations, so every entry gets the
+  // same zero credit and the pick is exactly the nearest — what the 19-town
+  // gazetteer did before the weighting existed.
+  const r = resolve({ id: "noaa/2b", name: "Jim Creek", latitude: 48.187, longitude: -124.063 });
+  assert.equal(r.context, "~Forks, WA");
 });
 
 test("a derived context never restates the name", () => {
@@ -196,7 +243,7 @@ test("a trailing Puget Sound qualifier is dropped, not used as context", () => {
     longitude: -124.385,
   });
   assert.equal(r.name, "Point Roberts");
-  assert.equal(r.context, "near Forks, WA");
+  assert.equal(r.context, "~Forks, WA");
   assert.equal(r.derived, true);
 });
 
@@ -211,7 +258,7 @@ test("a split context that restates the name is dropped, not emitted as a tautol
   });
   assert.equal(r.name, "Union");
   assert.notEqual(r.context, "Union Bay");
-  assert.equal(r.context, "near Everett, WA");
+  assert.equal(r.context, "~Everett, WA");
   assert.equal(r.derived, true);
 });
 

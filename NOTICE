@@ -1,0 +1,29 @@
+@sailingnaturali/station-corrections
+Copyright (c) Sailing Naturali
+Licensed under the MIT License (see LICENSE).
+
+This package includes one third-party dataset, under its own licence:
+
+--------------------------------------------------------------------------------
+data/places.json
+--------------------------------------------------------------------------------
+Derived from the GeoNames geographical database (cities500 dump).
+
+  Source:  https://download.geonames.org/export/dump/
+  Licence: Creative Commons Attribution 4.0 (CC BY 4.0)
+           https://creativecommons.org/licenses/by/4.0/
+  Credit:  "This product includes data created by GeoNames (www.geonames.org),
+           licensed under CC BY 4.0."
+
+The file is a filtered extract, not the dump: US and Canadian populated places
+(GeoNames feature codes PPL, PPLA*, PPLC, PPLG) within roughly 55 km of ocean
+coastline or a major lake, carrying name, region, position and population only.
+`scripts/build-places.mjs` regenerates it and records the exact filter.
+
+Natural Earth 1:10m coastline and lakes are used by that script as a spatial
+filter. Natural Earth is public domain, and no Natural Earth geometry appears in
+the output.
+
+Redistributing this file downstream carries the CC BY attribution requirement
+with it. The rest of the package — corrections, registry, gazetteer, code — is
+our own work under MIT, and PROVENANCE.md documents where those facts come from.
