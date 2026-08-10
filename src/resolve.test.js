@@ -99,18 +99,21 @@ test("a place with no population competes on distance alone", () => {
   assert.equal(r.context, "~Forks, WA");
 });
 
-test("a derived context never restates the name", () => {
+test("a derived context never restates the name, but keeps the region", () => {
   // Nearest place to the Everett station IS Everett; repeating it is the bug.
+  // Dropping the place entirely was the overcorrection: "WA" restates nothing
+  // and still says which coast this is.
   const r = resolve({ id: "noaa/3", name: "Everett", latitude: 47.979, longitude: -122.202 });
   assert.notEqual(r.context.toLowerCase(), "everett");
-  assert.equal(r.context, "");
+  assert.equal(r.context, "WA");
+  assert.equal(r.derived, true);
 });
 
 test("a derived context is suppressed even when it only overlaps the name as a phrase", () => {
   // Exact-equality would miss this: "Everett" inside "Everett Marina" is the
   // same restating-the-name mistake validateCorrections rejects from a human.
   const r = resolve({ id: "noaa/4", name: "Everett Marina", latitude: 47.979, longitude: -122.202 });
-  assert.equal(r.context, "");
+  assert.equal(r.context, "WA");
 });
 
 test("aliases always include the name and the slug", () => {

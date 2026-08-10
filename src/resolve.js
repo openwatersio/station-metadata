@@ -95,6 +95,15 @@ export function createResolver({ corrections = new Map(), gazetteer = [], regist
         // that the glyph does not.
         context = `~${nearest.name}, ${nearest.region}`;
         derived = true;
+      } else if (nearest && !namesOverlap(name, nearest.region)) {
+        // The nearest place restates the station's own name — "Ladysmith" by
+        // Ladysmith, "Victoria Harbour" by Victoria. Saying it twice is the
+        // tautology the overlap check exists to stop, but dropping the place
+        // wholesale throws away the half of it that ISN'T a restatement. The
+        // region alone still tells a reader which coast they are on, and it is
+        // the presentation NOAA itself uses: "Boston, MA".
+        context = nearest.region;
+        derived = true;
       }
     }
 
