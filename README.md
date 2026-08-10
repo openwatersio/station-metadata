@@ -131,9 +131,25 @@ The registry holds **two bounded, hand-curated classes**, told apart by `kind`:
   reference port* — an external rule we did not invent, and one that keeps a hand-written list
   small enough to stay honest rather than becoming a mirror of CHS's whole station table.
 
-Both rules are expansion-friendly and rule-governed; neither is a cap. A consumer reads `kind` to
-pick the right CHS series (currents vs tides) when resolving a station to live data. `kind` is the
-only field that differs by class — everything else is the same shape.
+Both rules are expansion-friendly and rule-governed; neither is a cap. `kind` is the only field
+that differs by class — everything else is the same shape.
+
+**Selecting gates: use `currentGates()`, don't filter by hand.**
+
+```js
+import { currentGates } from "@sailingnaturali/station-corrections";
+
+for (const [id, station] of currentGates({ provider: "chs" })) { /* fetch a live series */ }
+```
+
+It returns the entries you can fetch a live current series for: tide ports out, and derived gates
+out too (they have no series of their own — pass `includeDerived: true` for the full gate set).
+Reach for this instead of enumerating the registry yourself. The classes here have grown over
+time, and every consumer that rolled its own filter re-derived the split from whatever the
+registry happened to hold that month; two then broke the same way when it grew a class they
+predated — one asking a provider for current data at ten tide ports, the other warning about a
+"missing" station that is missing by definition. Owning the selection here means the next class
+this registry grows is handled once, where it grew.
 
 **Pairing a gate to a tide port.** A current gate can name a `tideReference` — the registry key of
 the tide reference port whose water a paired tide+current view shows beside it (say

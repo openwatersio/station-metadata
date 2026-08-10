@@ -226,6 +226,25 @@ export type Registry = Map<string, RegistryStation>;
 export function loadRegistry(yamlText: string): Registry;
 
 /**
+ * The current gates in a registry — the entries a consumer can fetch a live
+ * current series for. Tide reference ports are excluded (they publish no
+ * current series), and so are derived gates unless `includeDerived` is set —
+ * a derived gate is a real gate, but it has no series of its own to fetch.
+ *
+ * Prefer this over filtering `provider` by hand: every consumer that rolled its
+ * own re-derived the tide/current split, and two shipped the same bug when the
+ * registry grew a class they predated. See the note on `currentGates` in
+ * `src/registry.js`.
+ *
+ * Defaults to the registry this package ships.
+ */
+export function currentGates(options?: {
+  registry?: Registry;
+  provider?: string;
+  includeDerived?: boolean;
+}): Registry;
+
+/**
  * Check a registry for the mistakes contributors make. Pass `corrections` to
  * enable the cross-file rules (no station in both files, no slug collisions).
  */

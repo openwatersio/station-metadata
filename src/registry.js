@@ -1,6 +1,7 @@
 import { parse } from "yaml";
 import { namesOverlap } from "./names.js";
 import { toSlug } from "./slug.js";
+import bundledRegistry from "../data/registry.json" with { type: "json" };
 
 /**
  * Stations whose identity this package owns.
@@ -18,6 +19,60 @@ import { toSlug } from "./slug.js";
 export function loadRegistry(yamlText) {
   const raw = parse(yamlText) ?? {};
   return new Map(Object.entries(raw));
+}
+
+/**
+ * The current gates in a registry — the entries a consumer can fetch a live
+ * current series for.
+ *
+ * This exists because the registry curates two bounded classes (see the header
+ * above) and *every* consumer that enumerated it re-derived the distinction by
+ * hand. Two of them got it wrong the same way, months apart, because the
+ * registry grew a class after they were written:
+ *
+ *   - signalk-currents swept the ten CHS tide reference ports into its
+ *     current-station list, found no live current id for any of them, and threw
+ *     "no live id for <port>" on every poll cycle on the boat Pi (2026-08-10).
+ *   - chs-constituents kept the derived Malibu gate in its name overlay, so
+ *     every build logged "found no live IWLS station (name drift?)" for a gate
+ *     that is derived *precisely because* CHS publishes no station for it —
+ *     training the operator to ignore the warning that catches real renames.
+ *
+ * Both wanted this exact set. Owning it here means the next class the registry
+ * grows is handled once, by the package that grew it.
+ *
+ * An absent `kind` means "current": the registry was currents-only before tide
+ * ports arrived. Selection is an ALLOWLIST rather than `kind !== "tide"` — the
+ * bug above WAS an unanticipated kind, and a denylist re-acquires it the next
+ * time. (`validateRegistry` rejects an unknown kind, so nothing should reach
+ * here; this is the door that already failed once. resolve.js normalises the
+ * other way, treating any non-tide value as current — right for labelling a
+ * record, wrong for deciding whether to open a network connection.)
+ *
+ * Derived gates are excluded by default: they are genuinely current gates, but
+ * they have no series of their own, so a caller fetching from this list would
+ * ask a provider for something that does not exist. Pass `includeDerived` when
+ * you want the full set of gates rather than the fetchable ones.
+ *
+ * @param {object} [options]
+ * @param {Map<string, object>} [options.registry] Defaults to the bundled registry.
+ * @param {string} [options.provider] Keep only this provider; omit to span all.
+ * @param {boolean} [options.includeDerived] Keep derived gates too. Default false.
+ * @returns {Map<string, object>} Gates keyed by station id, in registry order.
+ */
+export function currentGates({
+  registry = new Map(Object.entries(bundledRegistry)),
+  provider,
+  includeDerived = false,
+} = {}) {
+  const gates = new Map();
+  for (const [id, record] of registry) {
+    if (provider !== undefined && record.provider !== provider) continue;
+    if ((record.kind ?? "current") !== "current") continue;
+    if (!includeDerived && record.derived !== undefined) continue;
+    gates.set(id, record);
+  }
+  return gates;
 }
 
 const isString = (v) => typeof v === "string";

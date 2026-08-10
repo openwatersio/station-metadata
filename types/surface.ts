@@ -21,6 +21,7 @@ import {
   readLock,
   diffLock,
   MAX_CORRECTION_KM,
+  currentGates,
   loadRegistry,
   validateRegistry,
   buildSlugsLock,
@@ -108,6 +109,11 @@ const rawRef: string | undefined = entry?.tideReference;
 const derivedRef: string | undefined = entry?.derived?.reference;
 const derivedLag: number | undefined = entry?.derived?.hwLagMinutes;
 
+// currentGates: every argument optional, and the bundled-registry no-arg call.
+const gatesBundled: Registry = currentGates();
+const gatesChs: Registry = currentGates({ provider: "chs" });
+const gatesAll: Registry = currentGates({ registry: reg, provider: "chs", includeDerived: true });
+
 // validatePositions and coverageWarnings are widened to accept either file -
 // exercise both shapes, not just Corrections.
 const registryPositionProblems: string[] = validatePositions(reg);
@@ -125,4 +131,5 @@ export const surface = {
   reg, entry, regProblems, fromRegistry, pairedRef, rawRef, derivedRef, derivedLag,
   registryPositionProblems, correctionsCoverage, registryCoverage,
   slugsLock, rereadSlugsLock, slugProblems,
+  gatesBundled, gatesChs, gatesAll,
 };

@@ -13,7 +13,7 @@ export {
 export { cleanName } from "./clean.js";
 export { toSlug } from "./slug.js";
 export { buildLock, readLock, diffLock } from "./lock.js";
-export { loadRegistry, validateRegistry } from "./registry.js";
+export { currentGates, loadRegistry, validateRegistry } from "./registry.js";
 export { buildSlugsLock, readSlugsLock, checkSlugs } from "./slugs-lock.js";
 
 /**

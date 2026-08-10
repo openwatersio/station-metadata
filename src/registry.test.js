@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadRegistry, validateRegistry } from "./registry.js";
+import { currentGates, loadRegistry, validateRegistry } from "./registry.js";
 import { loadCorrections } from "./corrections.js";
 
 const VALID = `
@@ -331,3 +331,79 @@ test("rejects a tideReference that is unknown, not a tide port, on a tide port, 
   assert.ok(p.some((m) => /tideReference must be a station key string/.test(m)));
 });
 
+
+// currentGates — the shared answer to "which registry entries are gates I can
+// fetch live current data for". Every consumer used to re-derive this, and two
+// of them shipped the same bug: signalk-currents swept the tide ports in and
+// threw "no live id" ten times a poll cycle on the boat Pi (2026-08-10), and
+// chs-constituents kept the derived Malibu gate in its overlay, so every build
+// logged a drift warning for a station that by definition has no live series.
+const MIXED = `
+chs-dodd-narrows:
+  name: Dodd Narrows
+  context: Nanaimo
+  position: [49.1344, -123.8171]
+  provider: chs
+chs-victoria:
+  name: Victoria
+  context: Inner Harbour
+  position: [48.424, -123.371]
+  provider: chs
+  kind: tide
+chs-malibu-rapids:
+  name: Malibu Rapids
+  context: Jervis Inlet
+  position: [50.16, -123.85]
+  provider: chs
+  kind: current
+  derived: { reference: chs-victoria, hwLagMinutes: 25, lwLagMinutes: 35 }
+noaa-boundary-pass:
+  name: Boundary Pass
+  context: Gulf Islands
+  position: [48.6912, -123.245]
+  provider: noaa
+`;
+
+test("currentGates keeps the plain gates, dropping tide ports and derived gates", () => {
+  const gates = currentGates({ registry: loadRegistry(MIXED) });
+  assert.deepEqual([...gates.keys()], ["chs-dodd-narrows", "noaa-boundary-pass"]);
+});
+
+test("currentGates filters by provider when asked, and spans providers when not", () => {
+  const registry = loadRegistry(MIXED);
+  assert.deepEqual([...currentGates({ registry, provider: "chs" }).keys()], ["chs-dodd-narrows"]);
+  assert.deepEqual([...currentGates({ registry, provider: "noaa" }).keys()], ["noaa-boundary-pass"]);
+});
+
+test("currentGates includes derived gates on request — they are gates, just not fetchable", () => {
+  const gates = currentGates({ registry: loadRegistry(MIXED), provider: "chs", includeDerived: true });
+  assert.deepEqual([...gates.keys()], ["chs-dodd-narrows", "chs-malibu-rapids"]);
+});
+
+test("currentGates treats an absent kind as current — the registry was currents first", () => {
+  const gates = currentGates({ registry: loadRegistry(MIXED), provider: "chs" });
+  assert.equal(gates.get("chs-dodd-narrows").name, "Dodd Narrows");
+});
+
+// An allowlist, not `kind !== "tide"`. The bug this export exists to stop WAS
+// the registry growing a kind a consumer had never seen; a denylist re-acquires
+// it the next time that happens. validateRegistry rejects an unknown kind, so
+// this is defence behind a closed door — but it is the door that already failed.
+test("currentGates drops a kind it has never seen rather than assuming it is a gate", () => {
+  const registry = loadRegistry(`
+chs-somewhere:
+  name: Somewhere
+  context: Elsewhere
+  position: [49, -123]
+  provider: chs
+  kind: wave
+`);
+  assert.deepEqual([...currentGates({ registry }).keys()], []);
+});
+
+test("currentGates defaults to the registry this package ships", () => {
+  const gates = currentGates({ provider: "chs" });
+  assert.ok(gates.has("chs-dodd-narrows"), "the bundled registry should carry Dodd Narrows");
+  assert.ok(!gates.has("chs-victoria"), "a bundled tide port must not read as a gate");
+  assert.ok(!gates.has("chs-malibu-rapids"), "the bundled derived gate must not read as fetchable");
+});
