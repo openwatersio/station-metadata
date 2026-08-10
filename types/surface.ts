@@ -113,6 +113,13 @@ const derivedLag: number | undefined = entry?.derived?.hwLagMinutes;
 const gatesBundled: Registry = currentGates();
 const gatesChs: Registry = currentGates({ provider: "chs" });
 const gatesAll: Registry = currentGates({ registry: reg, provider: "chs", includeDerived: true });
+// A consumer's own narrower record must pass without widening to RegistryStation,
+// and must come back as its own type — chs-constituents' overlay is built on a
+// {name, provider, kind} shape that deliberately carries no position.
+interface NarrowRecord { name: string; provider: string; kind?: string }
+const narrow = new Map<string, NarrowRecord>([["chs-x", { name: "X", provider: "chs" }]]);
+const gatesNarrow: Map<string, NarrowRecord> = currentGates({ registry: narrow, provider: "chs" });
+const narrowName: string | undefined = gatesNarrow.get("chs-x")?.name;
 
 // validatePositions and coverageWarnings are widened to accept either file -
 // exercise both shapes, not just Corrections.
@@ -131,5 +138,5 @@ export const surface = {
   reg, entry, regProblems, fromRegistry, pairedRef, rawRef, derivedRef, derivedLag,
   registryPositionProblems, correctionsCoverage, registryCoverage,
   slugsLock, rereadSlugsLock, slugProblems,
-  gatesBundled, gatesChs, gatesAll,
+  gatesBundled, gatesChs, gatesAll, gatesNarrow, narrowName,
 };

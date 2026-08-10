@@ -226,6 +226,18 @@ export type Registry = Map<string, RegistryStation>;
 export function loadRegistry(yamlText: string): Registry;
 
 /**
+ * The three fields `currentGates` reads. Typed as its own shape rather than
+ * `RegistryStation` so a consumer holding a narrower record of its own — most
+ * do; the registry is wider than any one reader needs — can pass it without
+ * widening to a full station it never uses.
+ */
+export interface GateSelectable {
+  provider?: string;
+  kind?: string;
+  derived?: unknown;
+}
+
+/**
  * The current gates in a registry — the entries a consumer can fetch a live
  * current series for. Tide reference ports are excluded (they publish no
  * current series), and so are derived gates unless `includeDerived` is set —
@@ -236,13 +248,14 @@ export function loadRegistry(yamlText: string): Registry;
  * registry grew a class they predated. See the note on `currentGates` in
  * `src/registry.js`.
  *
- * Defaults to the registry this package ships.
+ * Returns the caller's own record type, so an overlay built on a narrow local
+ * shape keeps it. Defaults to the registry this package ships.
  */
-export function currentGates(options?: {
-  registry?: Registry;
+export function currentGates<T extends GateSelectable = RegistryStation>(options?: {
+  registry?: Map<string, T>;
   provider?: string;
   includeDerived?: boolean;
-}): Registry;
+}): Map<string, T>;
 
 /**
  * Check a registry for the mistakes contributors make. Pass `corrections` to
