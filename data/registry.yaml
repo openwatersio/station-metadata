@@ -14,6 +14,46 @@
 # Both rules are expansion-friendly and rule-governed; neither is a cap. A
 # consumer picks the right CHS series (currents vs tides) by a station's kind.
 #
+# --- The rest of Canada, and why it is six stations shorter than you expect ---
+# CHS publishes tidal currents at exactly 30 stations nationally. Twenty are
+# here. The gate rule above rejects the other ten less two: what follows is that
+# survey, written down so the next person does not re-run it and so nobody
+# "discovers" a missing station and adds it back without the reason.
+#
+#   ADMITTED  Nakwakto Rapids, Quatsino Narrows, Masset Sound, Great Bras d'Or.
+#             Each one has a published instruction to transit on slack.
+#
+#   REJECTED - a current station exists, but nothing times a transit on it:
+#     Scott Channel        Sailing Directions: "deep and free of dangers". Tide
+#                          rips on a headland rounding, not a gate. Cruisers
+#                          round Cape Scott on Nahwitti Bar's slack instead.
+#     Hiekish Narrows      No slack caution in PAC 205, and it is the optional
+#                          east branch - Tolmie Channel is the Inner Passage
+#                          route. VTS only asks you to advise if transiting.
+#     Grand Manan Channel  ATL 106: "no dangers in the fairway". Also
+#                          discontinued as a station. Head Harbour Passage
+#                          nearby DOES run to 5 kn - but CHS predicts no
+#                          current there, so there is nothing to admit.
+#     Abegweit Passage     2.0 kn under the Confederation Bridge, across 5.5
+#                          miles of navigable width. ATL 108 gives no stream
+#                          rate and no slack advice at all. The widely-copied
+#                          "4 knots" is Wikipedia, roughly double CHS.
+#     Fairview Terminal    A container berth on Kaien Island. A temporary
+#                          station feeding Prince Rupert's pilotage
+#                          instrumentation - berthing data, not a passage.
+#     Porpoise Channel     The near miss, and the one worth reading before
+#       East               re-adding it. There IS a published HW-slack rule for
+#                          Porpoise Harbour, and Pub 154 does say 6-7 kn - but
+#                          that is an under-keel-clearance window for loaded
+#                          ships at the Ridley-Lelu narrows, and THIS station
+#                          sits east of that pinch, where CHS predicts 2.0 kn.
+#                          A gate whose station is not on the gate is worse
+#                          than no gate.
+#
+# Whether an admitted gate's slack can be PREDICTED is a separate question,
+# asked downstream and answered against published events - Nakwakto is a real
+# gate that no harmonic model fits (see openwatersio/slackwater-ios#9).
+#
 # A current gate may additionally carry a `derived` block when CHS publishes no
 # current station for it and slack is derived from a reference tide port's
 # high/low water (see the "Derived gates" section below). It stays kind:current
@@ -123,6 +163,25 @@ chs-gillard-passage:
   provider: chs
   aliases: [yucultas]
 
+chs-great-bras-dor:
+  name: Great Bras d'Or
+  context: Cape Breton Island
+  position: [46.2816, -60.4247]
+  provider: chs
+  kind: current
+  aliases: [big bras d'or, bras d'or lakes, boularderie, seal island bridge]
+  source: >-
+    The sea entrance to the Bras d'Or Lakes; the rapid is at the outer narrows
+    between Carey Point and Noir Point, not at the Seal Island Bridge 4.7 miles
+    southwest. Sailing Directions ATL 104 refers the mariner to the current
+    tables for slack water here. CHS names the same station both "Big Bras
+    D'Or" and "Great Bras D'or"; the channel is Great Bras d'Or, so that is the
+    name, with the other carried as an alias. Position from CHS's public
+    current-station list, matched by position and confirmed in the channel -
+    the tide reference ports' method, see PROVENANCE.md. Note for a consumer:
+    the stream here is phase-inverted (outward on most of the rising tide),
+    so slack must not be derived from tide height.
+
 chs-hole-in-the-wall:
   name: Hole in the Wall
   context: Okisollo Channel
@@ -143,12 +202,66 @@ chs-juan-de-fuca-east:
   provider: chs
   cities: [Victoria]
 
+chs-masset-sound:
+  name: Masset Sound
+  context: Haida Gwaii
+  position: [54.0029, -132.1543]
+  provider: chs
+  kind: current
+  cities: [Masset]
+  aliases: [masset channel, masset narrows, masset bar, masset harbour]
+  source: >-
+    The 24-mile sound on north Graham Island joining Masset Inlet to Dixon
+    Entrance, pinching to under two cables at Cook Point, which Sailing
+    Directions PAC 206 says should be navigated at or near slack water -
+    slack lasting "only a few minutes". Named for the sound, as the Sailing
+    Directions and tide tables name it; CHS's station file says "Masset
+    Channel", carried as an alias. Position from CHS's public current-station
+    list, matched by position and confirmed in the sound - the tide reference
+    ports' method, see PROVENANCE.md.
+
+chs-nakwakto-rapids:
+  name: Nakwakto Rapids
+  context: Slingsby Channel
+  position: [51.0967, -127.5033]
+  provider: chs
+  kind: current
+  aliases: [turret rock, tremble island, seymour inlet, belize inlet]
+  source: >-
+    The sole entrance to the Seymour and Belize Inlet complex, at the east end
+    of Slingsby Channel around Bramham Island, with Turret Rock mid-channel.
+    Sailing Directions is unusually direct about the timing: slack is "usually
+    less than 6 minutes" and the passage could not be made at any other time
+    "with any degree of safety". Position from CHS's public current-station
+    list, matched by position and confirmed in the channel - the tide reference
+    ports' method, see PROVENANCE.md.
+
 chs-porlier-pass:
   name: Porlier Pass
   context: Galiano & Valdes Islands
   position: [49.015, -123.585]
   provider: chs
   tideReference: chs-fulford-harbour
+
+chs-quatsino-narrows:
+  name: Quatsino Narrows
+  context: Holberg & Rupert Inlets
+  position: [50.555, -127.5574]
+  provider: chs
+  kind: current
+  cities: [Coal Harbour]
+  aliases: [drake island, coal harbour]
+  source: >-
+    The mile-and-a-half narrows east of Drake Island joining Quatsino Sound to
+    Holberg and Rupert Inlets, on northwest Vancouver Island. The Pacific
+    Pilotage Authority gates even piloted ships through it on daylight slack.
+    The transit outlasts the slack, so a consumer states the turn, not a
+    window. Position from CHS's public current-station list - the tide
+    reference ports' method, see PROVENANCE.md - held at the published
+    latitude and moved ~170 m west to mid-channel: the published longitude
+    (-127.5550) lands on the islet between the two threads of the narrows, and
+    the on-land audit caught it. Same treatment as chs-malibu-rapids, and the
+    reason the audit is a failure rather than a note.
 
 chs-race-passage:
   name: Race Passage

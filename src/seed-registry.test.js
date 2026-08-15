@@ -34,7 +34,7 @@ const REFERENCE_PORTS = [
 ];
 
 test("every registry station is a CHS station except the one NOAA gate", () => {
-  assert.equal(registry.size, 30 + NOAA_GATES.length); // +1: derived gate chs-malibu-rapids
+  assert.equal(registry.size, 34 + NOAA_GATES.length); // +1: derived gate chs-malibu-rapids
   for (const [id, record] of registry) {
     if (NOAA_GATES.includes(id)) {
       assert.equal(record.provider, "noaa", `${id} is not a noaa provider`);

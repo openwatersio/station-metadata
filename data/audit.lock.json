@@ -1,7 +1,7 @@
 {
   "note": "Audit results pinned per station. `station-corrections check` fails when a station has moved since this was written. Regenerate with `station-corrections lock`.",
-  "generated": "2026-07-23",
-  "coastline": "sha256-c90b25109a683e09da30f9bc82613b7a34595622ce06f5ae5bbb316f08d8dad0",
+  "generated": "2026-08-15",
+  "coastline": "sha256-e0e5e75f587dde4509eecf758fb60e36ec42a06bec1b27ce8d05a1cab4ad2aa9",
   "thresholdM": 200,
   "stations": {
     "noaa/9449932": {

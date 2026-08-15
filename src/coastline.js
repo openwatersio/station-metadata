@@ -14,17 +14,30 @@ export function isOnLand(lat, lon) {
 }
 
 let bounds = null;
+let regions = null;
 
 /**
- * The rectangle the bundled coastline actually covers.
+ * The rectangles the bundled coastline actually covers — one per clip region.
  *
- * Derived from the data rather than hardcoded, so rebuilding the coastline
- * with a different clip (scripts/build-coastline.mjs) updates this for free.
- * Computed once on first use: callers that never ask about coverage do not
- * pay for the walk over every coordinate.
+ * The build writes them into the file (`coverage`), because it is the only
+ * thing that knows them: the clip is several disjoint boxes now that the
+ * registry spans the country, and no walk over the coordinates can tell a
+ * gap between two regions from water inside one.
+ *
+ * Falls back to the coordinate extent for a coastline built before `coverage`
+ * existed — correct there, since that build clipped to exactly one box.
  */
-export function coverageBounds() {
-  if (bounds) return bounds;
+export function coverageRegions() {
+  if (regions) return regions;
+  regions = Array.isArray(coastline.coverage) && coastline.coverage.length
+    ? coastline.coverage.map(([minLon, minLat, maxLon, maxLat]) => ({
+        minLat, maxLat, minLon, maxLon,
+      }))
+    : [computedExtent()];
+  return regions;
+}
+
+function computedExtent() {
   let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
   const walk = (coords) => {
     if (typeof coords[0] === "number") {
@@ -38,7 +51,26 @@ export function coverageBounds() {
     for (const part of coords) walk(part);
   };
   for (const feature of coastline.features) walk(feature.geometry.coordinates);
-  bounds = { minLat, maxLat, minLon, maxLon };
+  return { minLat, maxLat, minLon, maxLon };
+}
+
+/**
+ * The single rectangle enclosing every covered region.
+ *
+ * Only honest as an *outer* limit: with disjoint regions, a position inside
+ * these bounds may still be somewhere the coastline cannot answer for. Ask
+ * `isWithinCoverage` whether a position is covered — never this.
+ * Computed once on first use.
+ */
+export function coverageBounds() {
+  if (bounds) return bounds;
+  const all = coverageRegions();
+  bounds = {
+    minLat: Math.min(...all.map((r) => r.minLat)),
+    maxLat: Math.max(...all.map((r) => r.maxLat)),
+    minLon: Math.min(...all.map((r) => r.minLon)),
+    maxLon: Math.max(...all.map((r) => r.maxLon)),
+  };
   return bounds;
 }
 
@@ -51,8 +83,9 @@ export function coverageBounds() {
  * or it is reporting a result it never computed.
  */
 export function isWithinCoverage(lat, lon) {
-  const b = coverageBounds();
-  return lat >= b.minLat && lat <= b.maxLat && lon >= b.minLon && lon <= b.maxLon;
+  return coverageRegions().some(
+    (r) => lat >= r.minLat && lat <= r.maxLat && lon >= r.minLon && lon <= r.maxLon,
+  );
 }
 
 const EARTH_M = 6_371_000;

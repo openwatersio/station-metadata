@@ -12,7 +12,7 @@
  * Requires `ogr2ogr` (GDAL) on PATH: brew install gdal
  */
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { loadRegistry } from "../src/registry.js";
 
@@ -43,36 +43,105 @@ const SALISH_SEA_FLOOR = [-125.5, 47.0, -122.0, 50.5];
 const REGISTRY_MARGIN_DEG = 0.25;
 
 /**
- * Clip bbox = the Salish Sea floor, grown to enclose every registry position
- * plus a margin. Derived from the data so it cannot fall behind the registry
- * as it grows north — the drift issue #9 was about. Registry stations are the
- * only positions this repo owns that can sit outside the floor.
+ * Clip boxes = the Salish Sea floor plus a box around every registry position,
+ * merged where they touch. Derived from the data so the clip cannot fall behind
+ * the registry as it grows — the drift issue #9 was about.
+ *
+ * SEVERAL boxes, not one. A single grown bbox worked while every gate was in the
+ * Salish Sea; once the registry went national it would ask for one rectangle from
+ * Haida Gwaii to PEI — the whole southern half of the country, at metre
+ * resolution, to cover a dozen passes. Disjoint boxes clip only the water people
+ * actually transit, and `coverage` (below) tells the loader which rectangles the
+ * answer is good in, so nothing claims coverage over the 3,000 km between them.
  */
-function clipBbox() {
+function clipBoxes() {
   const registry = loadRegistry(
     readFileSync(fileURLToPath(new URL("../data/registry.yaml", import.meta.url)), "utf8"),
   );
-  let [minLon, minLat, maxLon, maxLat] = SALISH_SEA_FLOOR;
+  const boxes = [SALISH_SEA_FLOOR.slice()];
   for (const [, record] of registry) {
     if (!Array.isArray(record.position) || record.position.length !== 2) continue;
     const [lat, lon] = record.position;
     if (typeof lat !== "number" || typeof lon !== "number") continue;
-    minLon = Math.min(minLon, lon - REGISTRY_MARGIN_DEG);
-    maxLon = Math.max(maxLon, lon + REGISTRY_MARGIN_DEG);
-    minLat = Math.min(minLat, lat - REGISTRY_MARGIN_DEG);
-    maxLat = Math.max(maxLat, lat + REGISTRY_MARGIN_DEG);
+    boxes.push([
+      lon - REGISTRY_MARGIN_DEG,
+      lat - REGISTRY_MARGIN_DEG,
+      lon + REGISTRY_MARGIN_DEG,
+      lat + REGISTRY_MARGIN_DEG,
+    ]);
   }
-  return [minLon, minLat, maxLon, maxLat];
+  return mergeOverlapping(boxes);
 }
 
-const BBOX = clipBbox();
-console.log(`clip bbox (registry-derived): ${BBOX.map((n) => n.toFixed(4)).join(", ")}`);
+/**
+ * How close two boxes must come before they are clipped as one region, in
+ * degrees. Not a cosmetic setting: it is what keeps a *coast* contiguous
+ * instead of shipping a string of postage stamps with holes between the gates.
+ *
+ * 1.0° is calibrated, not picked — it is the smallest value that reproduces the
+ * exact rectangle the single-bbox build shipped for the Salish Sea and the
+ * northern BC gates, so this change costs no consumer any coverage it had. It is
+ * also comfortably below the 1.27° that separates the north-coast gates, which
+ * is what keeps them a region of their own rather than swallowing 300 km of
+ * open water.
+ *
+ * ponytail: raise it if a future gate lands in a gap and wants its neighbours'
+ * water; lower it to trim bundle size, and re-measure against the old clip.
+ */
+const MERGE_GAP_DEG = 1.0;
+
+/**
+ * Union boxes that overlap or come within `MERGE_GAP_DEG` into their bounding
+ * box, repeatedly, until none do. Two gates 30 km apart share one clip instead
+ * of paying for the overlap twice, and a chain of them (the Discovery Islands
+ * up to Queen Charlotte Strait) collapses into a single region.
+ *
+ * ponytail: O(n²) per pass over a registry of tens of stations, run by hand
+ * when the coastline is rebuilt. Sweep-line it if this ever holds thousands.
+ */
+function mergeOverlapping(boxes) {
+  const g = MERGE_GAP_DEG;
+  const touches = (a, b) =>
+    a[0] - g <= b[2] && b[0] - g <= a[2] && a[1] - g <= b[3] && b[1] - g <= a[3];
+  const merged = [];
+  for (const box of boxes) {
+    let grown = box;
+    let hit = true;
+    while (hit) {
+      hit = false;
+      for (let i = merged.length - 1; i >= 0; i--) {
+        if (!touches(grown, merged[i])) continue;
+        const other = merged.splice(i, 1)[0];
+        grown = [
+          Math.min(grown[0], other[0]),
+          Math.min(grown[1], other[1]),
+          Math.max(grown[2], other[2]),
+          Math.max(grown[3], other[3]),
+        ];
+        hit = true;
+      }
+    }
+    merged.push(grown);
+  }
+  return merged;
+}
+
+const BOXES = clipBoxes();
+for (const b of BOXES) console.log(`clip box (registry-derived): ${b.map((n) => n.toFixed(4)).join(", ")}`);
+
+/** The clip regions as one WKT MULTIPOLYGON — what `-clipsrc` takes. */
+const clipWkt =
+  "MULTIPOLYGON(" +
+  BOXES.map(([w, s, e, n]) =>
+    `((${w} ${s},${e} ${s},${e} ${n},${w} ${n},${w} ${s}))`,
+  ).join(",") +
+  ")";
 
 execFileSync(
   "ogr2ogr",
   [
     "-f", "GeoJSON",
-    "-clipsrc", ...BBOX.map(String),
+    "-clipsrc", clipWkt,
     // Simplify to ~10 m. Enough to keep every island and inlet that matters,
     // small enough to ship. Do not raise this without re-running the golden points.
     "-simplify", "0.0001",
@@ -82,4 +151,13 @@ execFileSync(
   { stdio: "inherit" },
 );
 
-console.log(`wrote ${output}`);
+// Record the clip regions in the file itself. The loader used to recover the
+// covered rectangle by walking every coordinate, which is right for one box and
+// wrong for several: the walk returns the rectangle *spanning* them, and would
+// answer "covered" for the open Prairies. The build knows the real answer, so
+// it writes it down.
+const geojson = JSON.parse(readFileSync(output, "utf8"));
+geojson.coverage = BOXES;
+writeFileSync(output, JSON.stringify(geojson));
+
+console.log(`wrote ${output} (${BOXES.length} clip region(s))`);

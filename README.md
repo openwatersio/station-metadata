@@ -188,6 +188,14 @@ outside the Salish Sea box are now covered. A registry station outside coverage 
 **failure**, not a note: the package owns its position, so one the on-land audit can never reach
 is a claim it cannot back.
 
+The clip is **several disjoint regions**, not one rectangle. That changed when the registry grew
+gates on both coasts: one grown bbox would have run from Haida Gwaii to Cape Breton, and clipping
+metre-resolution coastline to the southern half of the country to cover a dozen passes is not
+shippable. Boxes within a degree of each other merge, so a coast stays contiguous rather than
+becoming a string of postage stamps. The regions are recorded in the coastline file itself, and
+`isWithinCoverage` tests them individually — asking only the outer bounds would answer "covered"
+for Winnipeg.
+
 ## Finding stations that are on land
 
 ```bash
