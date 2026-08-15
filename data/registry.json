@@ -98,6 +98,23 @@
       "yucultas"
     ]
   },
+  "chs-great-bras-dor": {
+    "name": "Great Bras d'Or",
+    "context": "Cape Breton Island",
+    "position": [
+      46.2816,
+      -60.4247
+    ],
+    "provider": "chs",
+    "kind": "current",
+    "aliases": [
+      "big bras d'or",
+      "bras d'or lakes",
+      "boularderie",
+      "seal island bridge"
+    ],
+    "source": "The sea entrance to the Bras d'Or Lakes; the rapid is at the outer narrows between Carey Point and Noir Point, not at the Seal Island Bridge 4.7 miles southwest. Sailing Directions ATL 104 refers the mariner to the current tables for slack water here. CHS names the same station both \"Big Bras D'Or\" and \"Great Bras D'or\"; the channel is Great Bras d'Or, so that is the name, with the other carried as an alias. Position from CHS's public current-station list, matched by position and confirmed in the channel - the tide reference ports' method, see PROVENANCE.md. Note for a consumer: the stream here is phase-inverted (outward on most of the rising tide), so slack must not be derived from tide height."
+  },
   "chs-hole-in-the-wall": {
     "name": "Hole in the Wall",
     "context": "Okisollo Channel",
@@ -129,6 +146,43 @@
       "Victoria"
     ]
   },
+  "chs-masset-sound": {
+    "name": "Masset Sound",
+    "context": "Haida Gwaii",
+    "position": [
+      54.0029,
+      -132.1543
+    ],
+    "provider": "chs",
+    "kind": "current",
+    "cities": [
+      "Masset"
+    ],
+    "aliases": [
+      "masset channel",
+      "masset narrows",
+      "masset bar",
+      "masset harbour"
+    ],
+    "source": "The 24-mile sound on north Graham Island joining Masset Inlet to Dixon Entrance, pinching to under two cables at Cook Point, which Sailing Directions PAC 206 says should be navigated at or near slack water - slack lasting \"only a few minutes\". Named for the sound, as the Sailing Directions and tide tables name it; CHS's station file says \"Masset Channel\", carried as an alias. Position from CHS's public current-station list, matched by position and confirmed in the sound - the tide reference ports' method, see PROVENANCE.md."
+  },
+  "chs-nakwakto-rapids": {
+    "name": "Nakwakto Rapids",
+    "context": "Slingsby Channel",
+    "position": [
+      51.0967,
+      -127.5033
+    ],
+    "provider": "chs",
+    "kind": "current",
+    "aliases": [
+      "turret rock",
+      "tremble island",
+      "seymour inlet",
+      "belize inlet"
+    ],
+    "source": "The sole entrance to the Seymour and Belize Inlet complex, at the east end of Slingsby Channel around Bramham Island, with Turret Rock mid-channel. Sailing Directions is unusually direct about the timing: slack is \"usually less than 6 minutes\" and the passage could not be made at any other time \"with any degree of safety\". Position from CHS's public current-station list, matched by position and confirmed in the channel - the tide reference ports' method, see PROVENANCE.md."
+  },
   "chs-porlier-pass": {
     "name": "Porlier Pass",
     "context": "Galiano & Valdes Islands",
@@ -138,6 +192,24 @@
     ],
     "provider": "chs",
     "tideReference": "chs-fulford-harbour"
+  },
+  "chs-quatsino-narrows": {
+    "name": "Quatsino Narrows",
+    "context": "Holberg & Rupert Inlets",
+    "position": [
+      50.555,
+      -127.5574
+    ],
+    "provider": "chs",
+    "kind": "current",
+    "cities": [
+      "Coal Harbour"
+    ],
+    "aliases": [
+      "drake island",
+      "coal harbour"
+    ],
+    "source": "The mile-and-a-half narrows east of Drake Island joining Quatsino Sound to Holberg and Rupert Inlets, on northwest Vancouver Island. The Pacific Pilotage Authority gates even piloted ships through it on daylight slack. The transit outlasts the slack, so a consumer states the turn, not a window. Position from CHS's public current-station list - the tide reference ports' method, see PROVENANCE.md - held at the published latitude and moved ~170 m west to mid-channel: the published longitude (-127.5550) lands on the islet between the two threads of the narrows, and the on-land audit caught it. Same treatment as chs-malibu-rapids, and the reason the audit is a failure rather than a note."
   },
   "chs-race-passage": {
     "name": "Race Passage",

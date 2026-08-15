@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { isOnLand, inlandMetres, nearestWater, coverageBounds, isWithinCoverage } from "./coastline.js";
+import { isOnLand, inlandMetres, nearestWater, coverageBounds, coverageRegions, isWithinCoverage } from "./coastline.js";
 
 test("the bundled coastline has not been generalised down to a handful of shapes", () => {
   // The 7 golden points below only prove those exact coordinates. A coarser
@@ -79,17 +79,36 @@ test("nearest water from a point already in water is itself", () => {
 });
 
 test("coverage bounds are derived from the coastline data", () => {
-  const b = coverageBounds();
   // scripts/build-coastline.mjs floors the clip at the Salish Sea box
   // [-125.5, 47.0, -122.0, 50.5] and grows it outward to enclose the registry
   // (#9), so the south/east edges stay put while the north/west follow the
   // northern CHS gates. Exact edges move with the registry, so assert the
   // invariant, not fixed numbers: the floor is preserved and the box only ever
   // grew from it.
-  assert.ok(Math.abs(b.minLat - 47.0) < 0.01, `minLat (floor) was ${b.minLat}`);
-  assert.ok(Math.abs(b.maxLon - -122.0) < 0.01, `maxLon (floor) was ${b.maxLon}`);
-  assert.ok(b.maxLat >= 50.5, `maxLat should cover past the old clip, was ${b.maxLat}`);
-  assert.ok(b.minLon <= -125.5, `minLon should cover past the old clip, was ${b.minLon}`);
+  //
+  // Asserted on the REGION carrying the floor, not on the overall bounds. Once
+  // the registry went national the clip became several disjoint regions, and
+  // the overall bounds run to Cape Breton — which would pass a "grew outward"
+  // check while saying nothing about the Salish box still being intact.
+  const salish = coverageRegions().find((r) => Math.abs(r.minLat - 47.0) < 0.01);
+  assert.ok(salish, "no region preserves the Salish Sea floor's southern edge");
+  assert.ok(Math.abs(salish.maxLon - -122.0) < 0.01, `maxLon (floor) was ${salish.maxLon}`);
+  assert.ok(salish.maxLat >= 50.5, `maxLat should cover past the old clip, was ${salish.maxLat}`);
+  assert.ok(salish.minLon <= -125.5, `minLon should cover past the old clip, was ${salish.minLon}`);
+});
+
+test("the water between two clip regions is not claimed as covered", () => {
+  // The defect a single spanning rectangle would reintroduce: with gates on
+  // both coasts, the bounds enclose the whole country, and every prairie
+  // section line would audit as clear open water.
+  const regions = coverageRegions();
+  if (regions.length < 2) return; // one region: nothing between, nothing to claim
+  const b = coverageBounds();
+  const inBounds = (lat, lon) =>
+    lat >= b.minLat && lat <= b.maxLat && lon >= b.minLon && lon <= b.maxLon;
+  // Winnipeg — inside the coast-to-coast bounds, inside no clip region.
+  assert.equal(inBounds(49.9, -97.1), true, "test point must be inside the outer bounds");
+  assert.equal(isWithinCoverage(49.9, -97.1), false);
 });
 
 // A point beyond the coastline in every direction, whatever the current clip -
