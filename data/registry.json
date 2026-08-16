@@ -113,7 +113,7 @@
       "boularderie",
       "seal island bridge"
     ],
-    "source": "The sea entrance to the Bras d'Or Lakes; the rapid is at the outer narrows between Carey Point and Noir Point, not at the Seal Island Bridge 4.7 miles southwest. Sailing Directions ATL 104 refers the mariner to the current tables for slack water here. CHS names the same station both \"Big Bras D'Or\" and \"Great Bras D'or\"; the channel is Great Bras d'Or, so that is the name, with the other carried as an alias. Position from CHS's public current-station list, matched by position and confirmed in the channel - the tide reference ports' method, see PROVENANCE.md. Note for a consumer: the stream here is phase-inverted (outward on most of the rising tide), so slack must not be derived from tide height."
+    "source": "The sea entrance to the Bras d'Or Lakes; the rapid is at the outer narrows between Carey Point and Noir Point, not at the Seal Island Bridge 4.7 miles southwest. Sailing Directions ATL 104 refers the mariner to the current tables for slack water here. CHS names the same station both \"Big Bras D'Or\" and \"Great Bras D'or\"; the channel is Great Bras d'Or, so that is the name, with the other carried as an alias. Position from CHS's public current-station list, matched by position and confirmed in the channel - the tide reference ports' method, see PROVENANCE.md. Note for a consumer: slack here lags high and low water by hours - a 3.5 to 4 h median across the 2026 predictions, ranging 2.5 to 5.5 - and the stream direction is inverted relative to the sea tide, flowing out while the tide rises. Slack must never be derived from tide height; read the current table."
   },
   "chs-hole-in-the-wall": {
     "name": "Hole in the Wall",
@@ -164,7 +164,7 @@
       "masset bar",
       "masset harbour"
     ],
-    "source": "The 24-mile sound on north Graham Island joining Masset Inlet to Dixon Entrance, pinching to under two cables at Cook Point, which Sailing Directions PAC 206 says should be navigated at or near slack water - slack lasting \"only a few minutes\". Named for the sound, as the Sailing Directions and tide tables name it; CHS's station file says \"Masset Channel\", carried as an alias. Position from CHS's public current-station list, matched by position and confirmed in the sound - the tide reference ports' method, see PROVENANCE.md."
+    "source": "The long sound on north Graham Island joining Masset Inlet to Dixon Entrance, pinching to under two cables at Cook Point, which Sailing Directions says should be navigated at or near slack water - slack lasting only a few minutes. The 2026 predictions peak at 5.8 knots ebbing and 5.6 flooding, with a median peak nearer 3.8 either way. Named for the sound, as the Sailing Directions and tide tables name it; CHS's station file says \"Masset Channel\", carried as an alias. Cited to PAC 206 when this entry was written; that volume is superseded by PAC 203, which carries the same wording. Position from CHS's public current-station list, matched by position and confirmed in the sound - the tide reference ports' method, see PROVENANCE.md."
   },
   "chs-nakwakto-rapids": {
     "name": "Nakwakto Rapids",
@@ -181,7 +181,7 @@
       "seymour inlet",
       "belize inlet"
     ],
-    "source": "The sole entrance to the Seymour and Belize Inlet complex, at the east end of Slingsby Channel around Bramham Island, with Turret Rock mid-channel. Sailing Directions is unusually direct about the timing: slack is \"usually less than 6 minutes\" and the passage could not be made at any other time \"with any degree of safety\". Position from CHS's public current-station list, matched by position and confirmed in the channel - the tide reference ports' method, see PROVENANCE.md."
+    "source": "The sole entrance to the Seymour and Belize Inlet complex, at the east end of Slingsby Channel around Bramham Island, with Turret Rock mid-channel. Sailing Directions PAC 202 is unusually direct about the timing: slack runs about six minutes, and it says the rapids cannot be run safely at any other time. The ebb is the faster stream - CHS gives 14.5 knots ebbing against 11.5 flooding. Position from CHS's public current-station list, matched by position and confirmed in the channel - the tide reference ports' method, see PROVENANCE.md."
   },
   "chs-porlier-pass": {
     "name": "Porlier Pass",
