@@ -170,10 +170,13 @@ resolved record, so the paired view reads one field. See [PROVENANCE.md](PROVENA
 pairing is sourced.
 
 The registry ships **no provider-minted identifier.** The key, `chs-dodd-narrows`, is the public
-id — stable and safe in a URL. Joining this record to a provider's live data (a CHS gate's
-current fitting, say) is done by **name**, and the provider's own opaque handle is resolved at
-runtime by whoever holds a licence to that provider's API; it is never redistributed here. See
-[PROVENANCE.md](PROVENANCE.md) for why. A station may not appear in both files — two sources of
+id — stable and safe in a URL. The provider's own opaque handle is resolved at runtime by whoever
+holds a licence to that provider's API; it is never redistributed here. Joining this record to
+that live data is done by **name** (fold the name, then fall back to `aliases`, which exist so a
+provider rename does not go dark — CHS publishes Masset Sound as "Masset Channel") or by
+**position** within a tolerance. Either works, but only after you **filter the provider's list to
+the series you want** — that filter, not the choice of key, is what makes the join unambiguous.
+See [PROVENANCE.md](PROVENANCE.md) for why, and for the collisions that lie in wait if you skip it. A station may not appear in both files — two sources of
 authority for one station is the bug, not a feature — and slugs must be unique across both,
 because URLs share one namespace. `formerSlugs` (see the corrections table above) is valid here
 too, for the same reason: both files feed the one slug namespace a consumer routes on.
