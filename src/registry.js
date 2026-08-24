@@ -152,6 +152,10 @@ export function validateRegistry(registry, { corrections = new Map() } = {}) {
       problems.push(`${id}: kind "${record.kind}" must be "tide" or "current"`);
     }
 
+    if (record.magnitudeNote !== undefined && !isNonEmptyString(record.magnitudeNote)) {
+      problems.push(`${id}: magnitudeNote must be a non-empty string`);
+    }
+
     // A `derived` block marks a current gate whose slack comes from a reference
     // tide port's high/low water rather than a fitted current series (see the
     // registry header). It carries the reference key and the two per-gate lags;
