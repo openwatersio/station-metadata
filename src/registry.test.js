@@ -34,6 +34,12 @@ test("accepts kind tide or current, rejects any other value", () => {
   assert.match(problems[0], /kind/);
 });
 
+test("accepts a current magnitude note and rejects an empty one", () => {
+  const withNote = (note) => `${VALID}  magnitudeNote: ${note}\n`;
+  assert.deepEqual(validateRegistry(loadRegistry(withNote('"9 kn flood & ebb"'))), []);
+  assert.ok(validateRegistry(loadRegistry(withNote('""'))).some((m) => /magnitudeNote/.test(m)));
+});
+
 test("accepts a derived gate referencing an existing tide port", () => {
   const yaml = `
 chs-point-atkinson:

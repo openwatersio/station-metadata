@@ -234,6 +234,8 @@
     "aliases": [
       "skookumchuck"
     ],
+    "magnitudeNote": "16.5 kn flood · 16 kn ebb",
+    "source": "Canadian Sailing Directions PAC 201 (2023/03), paragraph 224.",
     "tideReference": "chs-point-atkinson"
   },
   "chs-second-narrows": {
@@ -307,7 +309,8 @@
       "princess louisa",
       "malibu islet"
     ],
-    "source": "No CHS current station; slack is derived from Point Atkinson high/low water (HW+25 / LW+35 min, cruising-community consensus - Points North seminar, Waggoner). Position is in the Malibu Rapids channel on the Jervis Inlet approach, nudged ~110 m off the CHS Malibu Islet station (50.163, -123.85), which sits sub-resolution on the bundled coastline. See PROVENANCE.md.",
+    "magnitudeNote": "9 kn flood & ebb",
+    "source": "Current magnitude from Canadian Sailing Directions PAC 201 (2023/03), paragraph 246. No CHS current station; slack is derived from Point Atkinson high/low water (HW+25 / LW+35 min, cruising-community consensus - Points North seminar, Waggoner). Position is in the Malibu Rapids channel on the Jervis Inlet approach, nudged ~110 m off the CHS Malibu Islet station (50.163, -123.85), which sits sub-resolution on the bundled coastline. See PROVENANCE.md.",
     "derived": {
       "reference": "chs-point-atkinson",
       "hwLagMinutes": 25,

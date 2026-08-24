@@ -88,6 +88,8 @@ export interface ResolvedStation {
    * a registry entry with no `kind` resolves to `"current"`.
    */
   kind?: "tide" | "current";
+  /** Published large-tide current speeds, formatted for concise display. */
+  magnitudeNote?: string;
   /**
    * The effective reference tide port for a paired tide+current view — the
    * registry key of a current gate's `tideReference`, or, for a gate whose
