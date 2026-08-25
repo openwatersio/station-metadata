@@ -125,8 +125,9 @@ nothing to overlay onto — the record here *is* the station.
 chs-dodd-narrows:
   name: Dodd Narrows
   context: Nanaimo
-  position: [49.1344, -123.8171]
+  position: [49.13546639419797, -123.81735084108287]
   provider: chs
+  source: GSC West Coast Topo-Bathymetric DEM v2 hydraulic control section
 ```
 
 The registry holds **two bounded, hand-curated classes**, told apart by `kind`:
