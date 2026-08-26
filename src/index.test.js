@@ -26,8 +26,14 @@ test("the bundled resolver resolves a registry station from its id", async () =>
   const r = resolve({ id: "chs-dodd-narrows" });
   assert.equal(r.name, "Dodd Narrows");
   assert.equal(r.context, "Nanaimo");
-  assert.equal(r.latitude, 49.1344);
+  assert.equal(r.latitude, 49.13546639419797);
+  assert.equal(r.longitude, -123.81735084108287);
   assert.equal(r.corrected, false);
+
+  const { loadRegistry } = await import("./index.js");
+  const yaml = readFileSync(new URL("../data/registry.yaml", import.meta.url), "utf8");
+  const dodd = loadRegistry(yaml).get("chs-dodd-narrows");
+  assert.equal(dodd.source, "GSC West Coast Topo-Bathymetric DEM v2 hydraulic control section");
 });
 
 test("the bundled resolver still resolves an overlay station", async () => {

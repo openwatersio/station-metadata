@@ -53,13 +53,14 @@
     "name": "Dodd Narrows",
     "context": "Nanaimo",
     "position": [
-      49.1344,
-      -123.8171
+      49.13546639419797,
+      -123.81735084108287
     ],
     "provider": "chs",
     "cities": [
       "Nanaimo"
-    ]
+    ],
+    "source": "GSC West Coast Topo-Bathymetric DEM v2 hydraulic control section"
   },
   "chs-first-narrows": {
     "name": "First Narrows",
