@@ -620,7 +620,7 @@ Create `/tmp/station-metadata-main-ruleset.json` with `apply_patch`:
       "type": "pull_request",
       "parameters": {
         "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": true,
+        "require_code_owner_review": false,
         "require_last_push_approval": true,
         "required_approving_review_count": 1,
         "required_review_thread_resolution": true

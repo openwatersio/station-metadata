@@ -67,7 +67,6 @@ Naturali workspace policy.
 - `CLAUDE.md` points clients to `AGENTS.md`; it does not duplicate the rules.
 - `CONTRIBUTING.md` documents setup, data edits, checks, pull requests, the Open Waters
   CLA requirement, and release boundaries.
-- `CODEOWNERS` names the Open Waters maintainers for code, workflows, and station data.
 - Dependabot covers npm and GitHub Actions.
 - Third-party Actions are pinned to full commit SHAs.
 
@@ -100,7 +99,7 @@ CHS-derived model output.
 3. Update the canonical local remote and create the active checkout under
    `~/src/openwatersio/station-metadata` without deleting any in-use Sailing Naturali
    worktree.
-4. Apply Open Waters metadata, topics, CODEOWNERS, security settings, and branch/tag
+4. Apply Open Waters metadata, topics, security settings, and branch/tag
    rules.
 5. Require pull requests and CI on `main`; prevent force pushes and deletion of `main`
    and `v*` tags.
