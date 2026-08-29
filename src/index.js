@@ -55,7 +55,7 @@ export function createBundledResolver() {
  * first paint. Consumers that want national contexts are build-time
  * generators, and they can afford to read the file:
  *
- *     import places from "@sailingnaturali/station-corrections/data/places.json" with { type: "json" };
+ *     import places from "@openwaters/station-metadata/data/places.json" with { type: "json" };
  *     const resolve = createPlacesResolver(places);
  *
  * Corrections and the registry still win over a derived context, exactly as

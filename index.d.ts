@@ -1,5 +1,5 @@
 /**
- * Type declarations for @sailingnaturali/station-corrections.
+ * Type declarations for @openwaters/station-metadata.
  *
  * Kept in step with src/index.js by two checks that need each other:
  * types/surface.ts type-checks consumer-shaped usage of every export, and
@@ -115,7 +115,7 @@ export function createBundledResolver(): Resolver;
  * rather than the 19-town gazetteer. The list is a parameter because it is
  * ~890 KB and must not load eagerly into a browser bundle:
  *
- *     import places from "@sailingnaturali/station-corrections/data/places.json" with { type: "json" };
+ *     import places from "@openwaters/station-metadata/data/places.json" with { type: "json" };
  *     const resolve = createPlacesResolver(places);
  */
 export function createPlacesResolver(places: GazetteerPlace[]): Resolver;
@@ -290,7 +290,7 @@ export function validateRegistry(
   options?: { corrections?: Corrections },
 ): string[];
 
-/** Current slug per station id, as pinned by `station-corrections slugs`. */
+/** Current slug per station id, as pinned by `station-metadata slugs`. */
 export interface SlugsLock {
   note: string;
   generated: string;

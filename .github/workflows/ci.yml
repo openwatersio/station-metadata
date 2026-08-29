@@ -9,8 +9,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
@@ -25,14 +25,15 @@ jobs:
       # No stations file to pass here, so the distance-from-published check
       # sits out - it needs the provider's own list, which this repo does not
       # ship. Consumers that have one get it via `validate <stations.json>`.
-      - run: node bin/station-corrections.mjs validate
+      - run: node bin/station-metadata.mjs validate
       # A slug is an API - slackwater-web routes /tide/<slug> straight off it.
       # data/slugs.lock.json pins the slug this repo last shipped for each
       # station; this fails the moment one changes without the old value
       # recorded in that station's formerSlugs, so a breaking rename cannot
-      # merge unrecorded. Regenerate deliberately with `station-corrections slugs`.
-      - run: node bin/station-corrections.mjs check-slugs
+      # merge unrecorded. Regenerate deliberately with `station-metadata slugs`.
+      - run: node bin/station-metadata.mjs check-slugs
       # data/corrections.json is compiled from the YAML and committed, because
       # browsers cannot read the YAML off disk. A PR that edits the YAML and
       # not the artifact would ship them out of step - this catches that.
       - run: npm run check:data
+      - run: npm pack --dry-run

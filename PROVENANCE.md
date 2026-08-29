@@ -4,43 +4,17 @@ This package publishes **our own factual registry** of tide and current stations
 It is not a copy of any provider's station file. This document records where each
 field comes from, so the claim is auditable rather than asserted.
 
-## Why this matters
+## Operational boundary
 
-Station identity — an id, a name, a latitude and longitude — is **fact**, and facts
-are not copyrightable. Two courts, in the two jurisdictions this project operates in,
-say so directly:
+The registry is independently authored and reviewed, field by field. Contributors obtain
+and verify station facts from charts, gazetteers, fitting output, direct observation, or
+other documented sources, then write the registry record here.
 
-- **US** — *Feist Publications v. Rural Telephone* (1991). A phone book's white pages
-  got zero copyright protection: compiling facts, however laborious, is not authorship.
-  Only an *original selection, coordination, or arrangement* can be thinly protected, and
-  the underlying facts stay free for anyone to re-extract. "Sweat of the brow" was
-  explicitly rejected.
-- **Canada** — *CCH Canadian v. Law Society of Upper Canada* (2004). Originality requires
-  "skill and judgment," not mere labour. A factual list with an obvious arrangement is not
-  protected.
+> **Never redistribute a provider station export or include a provider-minted identifier.**
 
-Neither the US nor Canada has a EU-style *sui generis* database right, so the labour of
-assembling a station list creates no separate right here.
-
-**Completeness is the weakest position for a compilation claim, not the strongest.**
-Compilation copyright rewards original *selection* — deciding what to leave out. A complete
-list is by definition unselective, so there is no protectable selection left. Covering
-every gate in a region works *for* us on this point, not against.
-
-## The real constraint: don't redistribute a provider's file
-
-Copyright is not the live risk. **Licensing and terms-of-use are** — that is contract,
-separable from copyright. If we pulled a provider's station export under a license, its
-redistribution terms could bind us even though the facts inside are free.
-
-So the rule is simple and it is a rule about *method*, not about which facts appear:
-
-> **We publish independently obtained, human-reviewed facts. We do not redistribute any
-> provider's station file.**
-
-A record here that happens to agree with CHS on a coordinate is facts agreeing with facts.
-A byte-for-byte copy of CHS's station export would be redistributing their file — that is
-the line, and this package stays on the right side of it.
+Provider data may be consulted at runtime under the consumer's own terms, but a provider's
+station file and opaque identifiers do not enter this repository. Agreement with a provider
+coordinate does not replace independent authoring and human review.
 
 ## Per-field provenance
 
@@ -60,16 +34,16 @@ The honest summary: the *names, context, and positions* are our work, and there 
 provider handle in the published data at all — the one field that would point *into* a
 provider's system is the one field we chose not to ship.
 
-## The one third-party dataset: `data/places.json`
+## Third-party place data: `data/places.json`
 
 Everything above is about *station* identity, and none of it changes. `data/places.json` is
 not station identity — it is a list of **towns**, used only to derive a fallback caption
 ("~Nanaimo, BC") for a station that neither the registry nor the corrections file names.
 
-It is a filtered extract of **GeoNames cities500, CC BY 4.0** — a genuine third-party
-dataset, redistributed under its licence with attribution in [NOTICE](NOTICE). That is a
-deliberate exception to the rule above, and it is worth being precise about why it is not a
-contradiction:
+It is a filtered extract of **GeoNames cities500, CC BY 4.0** — a third-party dataset,
+redistributed under its licence with attribution in [NOTICE](NOTICE). The bundled coastline
+is also third-party data and is attributed there. Neither dataset contains tide or current
+station records:
 
 - The rule is *don't redistribute a **provider's** station file* — CHS's or NOAA's list of the
   things we publish records about. GeoNames publishes no tide or current stations, so nothing
@@ -86,8 +60,8 @@ falls back to whatever coarse label the consumer already has.
 ## Human review
 
 Every station's identity is reviewed by a person before it lands. Positions are audited
-against a bundled coastline (`station-corrections audit`) and a moved position shows up in a
-lock diff (`station-corrections check`). This review is what converts overlapping facts into
+against a bundled coastline (`station-metadata audit`) and a moved position shows up in a
+lock diff (`station-metadata check`). This review is what converts overlapping facts into
 our own verified factual work — see the `source` field on a `RegistryStation` for recording
 a per-station provenance that deviates from the defaults above.
 

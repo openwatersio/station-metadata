@@ -1,21 +1,18 @@
-# station-corrections
+# Station Metadata
 
-**Everything the agencies got wrong about tide and current stations, in one reviewable file.**
+**Shared, provider-neutral station identity and metadata for tide and current applications.**
 
-Published station data is a survey artifact, not a product. Names arrive shouting (`CHERRY POINT`)
-or trailing qualifiers (`Swinomish Channel ent., Padilla Bay`). Many carry no context at all, so
-a list of them reads half-broken. And some positions land on dry ground — the complaint that
-dogs every marine app in these waters.
-
-This package maps a station ID to what a person would actually say, plus a position that is
-actually in the water.
+This package gives providers and applications one vocabulary for station identity: stable keys
+and slugs, readable names and context, search aliases, reviewed positions, and current-gate /
+tide-port relationships. Its corrections overlay enriches provider records, while its registry
+defines stations that have no upstream identity to correct.
 
 ```bash
-npm install @sailingnaturali/station-corrections
+npm install @openwaters/station-metadata
 ```
 
 ```js
-import { createBundledResolver } from "@sailingnaturali/station-corrections";
+import { createBundledResolver } from "@openwaters/station-metadata";
 
 const resolve = createBundledResolver();
 
@@ -43,11 +40,11 @@ the `yaml` parser tree-shakes away unless you call `loadCorrections` yourself.
 To resolve against your own corrections or gazetteer instead of the bundled ones, use
 `createResolver({ corrections, gazetteer })` directly with `loadCorrections`. Advanced consumers
 that need the raw shipped files can reach them via the `./data/*` export subpath, e.g.
-`import("@sailingnaturali/station-corrections/data/corrections.yaml")` with an import attribute,
+`import("@openwaters/station-metadata/data/corrections.yaml")` with an import attribute,
 or `createRequire(import.meta.url).resolve(...)` to get a filesystem path.
 
 Checking that a corrected `position` actually lands in water (`validatePositions`) is exposed the
-same opt-in way, via `import { validatePositions } from "@sailingnaturali/station-corrections/validate-positions"`
+same opt-in way, via `import { validatePositions } from "@openwaters/station-metadata/validate-positions"`
 — it is not re-exported from the package root because it pulls in the 3.6 MB coastline parse, and
 the root import must stay cheap. A consumer validating their own corrections file, the same way the
 CLI's `validate` command does, imports this subpath directly.
@@ -145,7 +142,7 @@ that differs by class — everything else is the same shape.
 **Selecting gates: use `currentGates()`, don't filter by hand.**
 
 ```js
-import { currentGates } from "@sailingnaturali/station-corrections";
+import { currentGates } from "@openwaters/station-metadata";
 
 for (const [id, station] of currentGates({ provider: "chs" })) { /* fetch a live series */ }
 ```
@@ -203,8 +200,8 @@ for Winnipeg.
 ## Finding stations that are on land
 
 ```bash
-npx station-corrections audit stations.json
-npx station-corrections validate [stations.json]
+npx station-metadata audit stations.json
+npx station-metadata validate [stations.json]
 ```
 
 The audit tests every resolved position against a bundled coastline and reports those more than
@@ -241,8 +238,8 @@ placed (issue #1), and that is a placement problem, resolved in the corrections 
 ## Pinning results with a lock
 
 ```bash
-npx station-corrections lock stations.json    # writes data/audit.lock.json
-npx station-corrections check stations.json   # exit 1 if a station has moved since the lock
+npx station-metadata lock stations.json    # writes data/audit.lock.json
+npx station-metadata check stations.json   # exit 1 if a station has moved since the lock
 ```
 
 `lock` pins every station's *resolved* position and audit verdict (`clear`, `verified`, or
@@ -257,8 +254,8 @@ reporting how many were cached versus freshly checked.
 ## Pinning slugs with a lock
 
 ```bash
-npx station-corrections slugs        # writes data/slugs.lock.json
-npx station-corrections check-slugs  # exit 1 if a slug moved without being recorded
+npx station-metadata slugs        # writes data/slugs.lock.json
+npx station-metadata check-slugs  # exit 1 if a slug moved without being recorded
 ```
 
 A slug is an API: it goes straight into a shareable URL (`slackwater-web` routes `/tide/<slug>`),
@@ -286,7 +283,7 @@ present whenever `position` is, unique slugs (current and former), no context th
 name, that a corrected `position` actually lands in water against the bundled coastline, and
 (`check-slugs`) that a moved slug was recorded in `formerSlugs`.
 
-Pass a stations file — `station-corrections validate stations.json` — and one more check runs:
+Pass a stations file — `station-metadata validate stations.json` — and one more check runs:
 that a corrected position is within **5 km** of the one the provider published. A correction is
 a fix, not a relocation; the gauge is where it is, and what is wrong is the coordinate written
 down for it. This one needs the published station list, which the corrections file deliberately
@@ -298,13 +295,13 @@ If a station looks wrong in an app built on this, a one-line PR fixes it for eve
 ## Data and licences
 
 - **Coastline** — [OSM land polygons](https://osmdata.openstreetmap.de/data/land-polygons.html),
-  ODbL, clipped to the Salish Sea. Natural Earth 1:10m was measured and rejected: it reads the
-  Anacortes area as water and Friday Harbor as land, generalising the San Juans away entirely.
+  ODbL, clipped to the station coverage regions. Natural Earth 1:10m was measured and rejected:
+  it reads the Anacortes area as water and Friday Harbor as land, generalising the San Juans away
+  entirely.
 - **Corrections and gazetteer** — hand-written here, MIT with the package.
 - **Places** (`data/places.json`) — derived from [GeoNames](https://www.geonames.org/) cities500,
-  **CC BY 4.0**, filtered to US/Canada populated places near ocean or Great Lakes water. This is
-  the one dataset here that carries a third-party licence: attribution is in [NOTICE](NOTICE), and
-  the filter is in `scripts/build-places.mjs`. Everything else in the package stays MIT.
+  **CC BY 4.0**, filtered to US/Canada populated places near ocean or Great Lakes water. The filter
+  is in `scripts/build-places.mjs`; attribution for this and the coastline is in [NOTICE](NOTICE).
 - **Station identity** (names, contexts, positions) — our own facts, independently
   obtained and human-reviewed, not a copy of any provider's station file. No provider-minted
   identifier ships at all. Field-by-field provenance and the reasoning are in
@@ -324,4 +321,4 @@ npm run build:data # recompile data/corrections.json after editing the YAML
 
 ---
 
-MIT. Part of [Sailing Naturali](https://sailingnaturali.com).
+MIT. Part of [Open Waters](https://openwaters.io).

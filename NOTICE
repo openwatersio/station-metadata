@@ -1,8 +1,8 @@
-@sailingnaturali/station-corrections
+@openwaters/station-metadata
 Copyright (c) Sailing Naturali
 Licensed under the MIT License (see LICENSE).
 
-This package includes one third-party dataset, under its own licence:
+This package includes third-party datasets under their own licences:
 
 --------------------------------------------------------------------------------
 data/places.json
@@ -25,5 +25,19 @@ filter. Natural Earth is public domain, and no Natural Earth geometry appears in
 the output.
 
 Redistributing this file downstream carries the CC BY attribution requirement
-with it. The rest of the package — corrections, registry, gazetteer, code — is
-our own work under MIT, and PROVENANCE.md documents where those facts come from.
+with it. The corrections, registry, gazetteer, and code are our own work under
+MIT, and PROVENANCE.md documents where those facts come from.
+
+--------------------------------------------------------------------------------
+data/coastline.geojson
+--------------------------------------------------------------------------------
+Derived from OpenStreetMap land polygons.
+
+  Source:  https://osmdata.openstreetmap.de/data/land-polygons.html
+  Licence: Open Database License (ODbL) 1.0
+           https://opendatacommons.org/licenses/odbl/1-0/
+  Credit:  OpenStreetMap contributors
+
+The file is a clipped extract used to validate whether reviewed station
+positions fall in water. OpenStreetMap attribution and the ODbL apply to this
+dataset.
