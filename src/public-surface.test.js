@@ -15,7 +15,7 @@ test("the published package and CLI use the Open Waters station-metadata identit
   assert.deepEqual(manifest.bin, { "station-metadata": "bin/station-metadata.mjs" });
   assert.equal(manifest.repository.url, "git+https://github.com/openwatersio/station-metadata.git");
   assert.equal(manifest.bugs.url, "https://github.com/openwatersio/station-metadata/issues");
-  assert.equal(manifest.homepage, "https://github.com/openwatersio/station-metadata#readme");
+  assert.equal(manifest.homepage, "https://openwaters.io");
   assert.deepEqual(manifest.publishConfig, { access: "public" });
   assert.equal(
     existsSync(fileURLToPath(new URL("../bin/station-corrections.mjs", import.meta.url))),
