@@ -129,7 +129,7 @@ chs-dodd-narrows:
 
 The registry holds **two bounded, hand-curated classes**, told apart by `kind`:
 
-- **Current gates** (`kind: current`, or omitted — the registry was gates-only first). A current
+- **Current gates** (`kind: current`; an omitted `kind` also resolves as `current`). A current
   station joins when *safe transit requires timing slack* — the gates on the Inside Passage route,
   not every interesting current.
 - **Tide reference ports** (`kind: tide`). A tide station joins when *CHS itself designates it a
@@ -149,12 +149,10 @@ for (const [id, station] of currentGates({ provider: "chs" })) { /* fetch a live
 
 It returns the entries you can fetch a live current series for: tide ports out, and derived gates
 out too (they have no series of their own — pass `includeDerived: true` for the full gate set).
-Reach for this instead of enumerating the registry yourself. The classes here have grown over
-time, and every consumer that rolled its own filter re-derived the split from whatever the
-registry happened to hold that month; two then broke the same way when it grew a class they
-predated — one asking a provider for current data at ten tide ports, the other warning about a
-"missing" station that is missing by definition. Owning the selection here means the next class
-this registry grows is handled once, where it grew.
+Reach for this instead of enumerating the registry yourself. It owns the tide/current and
+fetchable/derived boundaries, preventing consumers from requesting current data for tide ports
+or treating a derived gate's intentionally absent series as missing data. One selection function
+keeps every consumer aligned with the registry's classes.
 
 **Pairing a gate to a tide port.** A current gate can name a `tideReference` — the registry key of
 the tide reference port whose water a paired tide+current view shows beside it (say
@@ -184,18 +182,15 @@ registry position is not, because it *is* the published value. That absence is d
 
 **Coverage.** The bundled coastline clip is derived from the registry's own extent (see
 [Finding stations that are on land](#finding-stations-that-are-on-land)), so every registry
-position sits within it — the northern gates (Blackney, Johnstone Strait, Weynton) that once fell
-outside the Salish Sea box are now covered. A registry station outside coverage is a `validate`
-**failure**, not a note: the package owns its position, so one the on-land audit can never reach
-is a claim it cannot back.
+position must sit within a coverage region. A registry station outside coverage is a `validate`
+**failure**, not a note: the package owns its position, so one the on-land audit cannot reach is
+a claim it cannot back.
 
-The clip is **several disjoint regions**, not one rectangle. That changed when the registry grew
-gates on both coasts: one grown bbox would have run from Haida Gwaii to Cape Breton, and clipping
-metre-resolution coastline to the southern half of the country to cover a dozen passes is not
-shippable. Boxes within a degree of each other merge, so a coast stays contiguous rather than
-becoming a string of postage stamps. The regions are recorded in the coastline file itself, and
-`isWithinCoverage` tests them individually — asking only the outer bounds would answer "covered"
-for Winnipeg.
+The clip is **several disjoint regions**, not one rectangle. This covers gates on both coasts
+without clipping metre-resolution coastline across the country between them. Boxes within a
+degree of each other merge, so a coast stays contiguous rather than becoming a string of postage
+stamps. The regions are recorded in the coastline file itself, and `isWithinCoverage` tests them
+individually — asking only the outer bounds would answer "covered" for Winnipeg.
 
 ## Finding stations that are on land
 
@@ -232,8 +227,8 @@ station is gone: NOAA still publishes harmonic tide predictions for every one of
 exactly why a prediction app bundles them. `removed` is the normal state of a subordinate station,
 not a reason to drop or flag it. This package carries no decommissioned/operational field for that
 reason — it would mislabel the majority of the corpus while distinguishing nothing a consumer can
-act on. The only stations that ever needed attention were the two whose *position* couldn't be
-placed (issue #1), and that is a placement problem, resolved in the corrections file.
+act on. Placement is assessed independently through the station position and corrections file;
+the provider's `removed` flag never determines whether a prediction station belongs in the data.
 
 ## Pinning results with a lock
 
@@ -269,8 +264,8 @@ slug and record its old value in `formerSlugs` in the same change, then regenera
 
 One judgment no check can make: only record a former slug when the new slug points at the **same
 place**. A genuine rename qualifies; a mislabel does not — redirecting a mislabelled slug preserves
-a wrong link, where a 404 is the more honest outcome (this is why the `anacortes` slug was retired
-without one). Slug changes are rare, and a downstream consumer owns the redirect either way.
+a wrong link, where a 404 is the more honest outcome. A downstream consumer owns the redirect
+either way.
 
 ## Contributing a correction
 
