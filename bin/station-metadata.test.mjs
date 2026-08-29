@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { coverageBounds } from "../src/coastline.js";
 
-const bin = fileURLToPath(new URL("./station-corrections.mjs", import.meta.url));
+const bin = fileURLToPath(new URL("./station-metadata.mjs", import.meta.url));
 const lockPath = fileURLToPath(new URL("../data/audit.lock.json", import.meta.url));
 
 // spawnSync (not execFileSync) because it returns stdout/stderr on *every*
@@ -23,7 +23,7 @@ function runAudit(path) {
   return run(["audit", path]);
 }
 
-// station-corrections lock/check always write/read the package's own
+// station-metadata lock/check always write/read the package's own
 // data/audit.lock.json (not a path derived from the stations file), so any
 // test that runs `lock` or `check` mutates the repo's real lock. Snapshot it
 // first and restore in a finally so these tests don't corrupt it and are
@@ -38,7 +38,7 @@ function withRealLockBackup(fn) {
 }
 
 function withFixtureStations(stations, fn) {
-  const dir = mkdtempSync(join(tmpdir(), "station-corrections-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "station-metadata-test-"));
   const path = join(dir, "stations.json");
   writeFileSync(path, JSON.stringify(stations));
   try {
@@ -67,7 +67,7 @@ function stripCacheSummary(stdout) {
 }
 
 test("audit prints a clear message and exits non-zero on a missing stations file", () => {
-  const dir = mkdtempSync(join(tmpdir(), "station-corrections-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "station-metadata-test-"));
   const path = join(dir, "missing.json");
   const { status, stderr } = runAudit(path);
   rmSync(dir, { recursive: true, force: true });
@@ -78,7 +78,7 @@ test("audit prints a clear message and exits non-zero on a missing stations file
 });
 
 test("audit prints a clear message and exits non-zero on malformed JSON", () => {
-  const dir = mkdtempSync(join(tmpdir(), "station-corrections-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "station-metadata-test-"));
   const path = join(dir, "bad.json");
   writeFileSync(path, "{ this is not json");
   const { status, stderr } = runAudit(path);
@@ -90,7 +90,7 @@ test("audit prints a clear message and exits non-zero on malformed JSON", () => 
 });
 
 test("audit rejects a stations file that is a JSON object instead of an array", () => {
-  const dir = mkdtempSync(join(tmpdir(), "station-corrections-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "station-metadata-test-"));
   const path = join(dir, "object.json");
   writeFileSync(path, JSON.stringify({ id: "noaa/1", name: "Not An Array" }));
   const { status, stderr } = runAudit(path);
@@ -110,7 +110,7 @@ test("audit resolves stations through the same bundled resolver library consumer
 });
 
 test("audit rejects a stations file that is a JSON string instead of an array", () => {
-  const dir = mkdtempSync(join(tmpdir(), "station-corrections-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "station-metadata-test-"));
   const path = join(dir, "string.json");
   writeFileSync(path, JSON.stringify("just a string"));
   const { status, stderr } = runAudit(path);

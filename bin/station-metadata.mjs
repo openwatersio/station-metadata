@@ -30,7 +30,7 @@ function coastlineFingerprint() {
 /** Read, parse and shape-check a stations file, or print a clear message and exit 1. Shared by every command that takes a stations.json argument. */
 function readStationsFile(command, stationsPath) {
   if (!stationsPath) {
-    console.error(`usage: station-corrections ${command} <stations.json>`);
+    console.error(`usage: station-metadata ${command} <stations.json>`);
     process.exit(1);
   }
   let raw;
@@ -200,12 +200,12 @@ if (command === "check") {
   try {
     lock = readLock(readFileSync(lockPath, "utf8"));
   } catch (err) {
-    console.error(`check: could not read ${lockPath} (${err.code === "ENOENT" ? "no such file - run \`station-corrections lock\` first" : err.message})`);
+    console.error(`check: could not read ${lockPath} (${err.code === "ENOENT" ? "no such file - run \`station-metadata lock\` first" : err.message})`);
     process.exit(1);
   }
 
   if (lock.coastline !== coastlineFingerprint() || lock.thresholdM !== REPORT_THRESHOLD_M) {
-    console.error("check: coastline data or threshold has changed since the lock was written - every verdict is stale, re-run `station-corrections lock`");
+    console.error("check: coastline data or threshold has changed since the lock was written - every verdict is stale, re-run `station-metadata lock`");
     process.exit(1);
   }
 
@@ -216,7 +216,7 @@ if (command === "check") {
 
   const problems = diff.moved.length + diff.added.length + diff.removed.length;
   if (problems) {
-    console.error(`\n${problems} problem(s) - regenerate with \`station-corrections lock\` once reviewed`);
+    console.error(`\n${problems} problem(s) - regenerate with \`station-metadata lock\` once reviewed`);
     process.exit(1);
   }
   console.log(`check: ${diff.unchanged.length} station(s) match the lock`);
@@ -235,21 +235,21 @@ if (command === "check-slugs") {
   try {
     lock = readSlugsLock(readFileSync(slugsLockPath, "utf8"));
   } catch (err) {
-    console.error(`check-slugs: could not read ${slugsLockPath} (${err.code === "ENOENT" ? "no such file - run \`station-corrections slugs\` first" : err.message})`);
+    console.error(`check-slugs: could not read ${slugsLockPath} (${err.code === "ENOENT" ? "no such file - run \`station-metadata slugs\` first" : err.message})`);
     process.exit(1);
   }
 
   const problems = checkSlugs(lock, corrections, registry);
   for (const problem of problems) console.error(problem);
   if (problems.length) {
-    console.error(`\n${problems.length} problem(s) - regenerate with \`station-corrections slugs\` once the change is reviewed and recorded in formerSlugs`);
+    console.error(`\n${problems.length} problem(s) - regenerate with \`station-metadata slugs\` once the change is reviewed and recorded in formerSlugs`);
     process.exit(1);
   }
   console.log(`check-slugs: ${Object.keys(lock.slugs).length} station(s) match the lock`);
   process.exit(0);
 }
 
-console.error("usage: station-corrections <validate|audit|lock|check|slugs|check-slugs> [stations.json]");
+console.error("usage: station-metadata <validate|audit|lock|check|slugs|check-slugs> [stations.json]");
 console.error("  validate [stations.json]  stations file is optional; supplying it also checks");
 console.error("                            each correction's distance from the published position");
 process.exit(1);

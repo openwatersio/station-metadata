@@ -1,7 +1,7 @@
 {
-  "name": "@sailingnaturali/station-corrections",
-  "version": "2.9.2",
-  "description": "Friendly names, search aliases and corrected positions for tide and current stations",
+  "name": "@openwaters/station-metadata",
+  "version": "3.0.0",
+  "description": "Provider-neutral tide and current station identity, metadata, search aliases, and corrected positions",
   "main": "src/index.js",
   "types": "index.d.ts",
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sailingnaturali/station-corrections.git"
+    "url": "git+https://github.com/openwatersio/station-metadata.git"
   },
   "keywords": [
     "tides",
@@ -24,20 +24,23 @@
     "geocoding",
     "corrections"
   ],
-  "author": "Sailing Naturali",
+  "author": "Open Waters",
   "license": "MIT",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/sailingnaturali/station-corrections/issues"
+    "url": "https://github.com/openwatersio/station-metadata/issues"
   },
-  "homepage": "https://github.com/sailingnaturali/station-corrections#readme",
+  "homepage": "https://github.com/openwatersio/station-metadata#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@turf/boolean-point-in-polygon": "^7.3.5",
     "@turf/helpers": "^7.3.5",
     "yaml": "^2.9.0"
   },
   "bin": {
-    "station-corrections": "bin/station-corrections.mjs"
+    "station-metadata": "bin/station-metadata.mjs"
   },
   "exports": {
     ".": {

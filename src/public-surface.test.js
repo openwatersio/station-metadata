@@ -1,10 +1,27 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import * as index from "./index.js";
 
 const srcDir = fileURLToPath(new URL(".", import.meta.url));
+
+test("the published package and CLI use the Open Waters station-metadata identity", () => {
+  const manifest = JSON.parse(
+    readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8"),
+  );
+
+  assert.equal(manifest.name, "@openwaters/station-metadata");
+  assert.deepEqual(manifest.bin, { "station-metadata": "bin/station-metadata.mjs" });
+  assert.equal(manifest.repository.url, "git+https://github.com/openwatersio/station-metadata.git");
+  assert.equal(manifest.bugs.url, "https://github.com/openwatersio/station-metadata/issues");
+  assert.equal(manifest.homepage, "https://github.com/openwatersio/station-metadata#readme");
+  assert.deepEqual(manifest.publishConfig, { access: "public" });
+  assert.equal(
+    existsSync(fileURLToPath(new URL("../bin/station-corrections.mjs", import.meta.url))),
+    false,
+  );
+});
 
 /**
  * Modules whose entire export surface is deliberately excluded from index.js.

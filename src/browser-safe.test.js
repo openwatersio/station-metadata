@@ -77,9 +77,9 @@ test("nothing reachable from the package root imports a Node builtin", () => {
 
 test("the walker actually finds builtins, so a clean result means something", () => {
   // Guards the test above against silently passing because the regex stopped
-  // matching. bin/station-corrections.mjs is legitimately Node-only, so it is
+  // matching. bin/station-metadata.mjs is legitimately Node-only, so it is
   // a stable positive control.
-  const cliImports = walk(new URL("../bin/station-corrections.mjs", import.meta.url));
+  const cliImports = walk(new URL("../bin/station-metadata.mjs", import.meta.url));
   const builtinsFound = cliImports.filter(({ specifier }) => BUILTINS.has(specifier));
 
   assert.ok(
