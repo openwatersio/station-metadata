@@ -36,7 +36,7 @@
 - Modify `src/public-surface.test.js`: lock the new package and CLI identities.
 - Modify `README.md`, `index.d.ts`, `NOTICE`, and `PROVENANCE.md`: public identity, Open Waters ownership, attribution, and provenance boundary.
 - Create `AGENTS.md`, `CLAUDE.md`, and `CONTRIBUTING.md`: standalone Open Waters instructions.
-- Create `.github/CODEOWNERS` and `.github/dependabot.yml`: ownership and dependency maintenance.
+- Create `.github/dependabot.yml`: dependency maintenance.
 - Modify `.github/workflows/ci.yml` and `.github/workflows/publish.yml`: renamed CLI, full-SHA Actions, package dry run, OIDC release.
 - Create `docs/README.md`: live-doc policy and Git-history retrieval.
 - Delete shipped plans/specs under `docs/superpowers/` after retaining the approved cutover design and implementation plan until completion.
@@ -203,7 +203,6 @@ rtk git commit -m "Rename the package to station metadata"
 - Create: `AGENTS.md`
 - Create: `CLAUDE.md`
 - Create: `CONTRIBUTING.md`
-- Create: `.github/CODEOWNERS`
 - Create: `.github/dependabot.yml`
 - Modify: `.github/workflows/ci.yml`
 - Modify: `.github/workflows/publish.yml`
@@ -285,15 +284,7 @@ Create `CONTRIBUTING.md` covering:
 Do not include private account identifiers, SNI paths, personal credential locations, or
 local-host policy.
 
-- [ ] **Step 3: Add ownership and dependency maintenance**
-
-Create `.github/CODEOWNERS`:
-
-```text
-* @bkeepers @clarkbw
-/.github/ @bkeepers @clarkbw
-/data/ @bkeepers @clarkbw
-```
+- [ ] **Step 3: Add dependency maintenance**
 
 Create `.github/dependabot.yml`:
 
