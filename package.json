@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@turf/boolean-point-in-polygon": "^7.3.5",
-    "@turf/helpers": "^7.3.5",
+    "@turf/helpers": "^7.4.0",
     "yaml": "^2.9.0"
   },
   "bin": {
