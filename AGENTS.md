@@ -11,13 +11,14 @@ relationships.
 - `npm run build:data`
 - `npm run check:data`
 - `node bin/station-metadata.mjs validate`
-- `node bin/station-metadata.mjs check-slugs`
+- `npm run check:slugs` (needs the four catalogue paths in `NOAA_TIDES`, `CHS_TIDES`,
+  `NOAA_CURRENTS`, `CHS_GATES`)
 
 ## Data rules
 
 - Edit YAML sources; commit their generated JSON together.
-- Preserve registry keys and slugs as public APIs. Record legitimate slug renames in
-  `formerSlugs` and regenerate the slug lock.
+- Preserve registry keys and slugs as public APIs. A slug published in `data/slugs.json`
+  never moves; record legitimate renames in `formerSlugs`.
 - Never add provider-minted identifiers, provider station exports, predictions, fitted
   constituents, amplitudes/phases, datums, current axes, credentials, or generated CHS
   model output.

@@ -17,7 +17,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: node bin/station-metadata.mjs validate
-      - run: node bin/station-metadata.mjs check-slugs
+      # No check-slugs here: it requires every catalogue file for both kinds, and
+      # this repo ships none. The published table is guarded on every pull request
+      # by ci.yml's comparison against the previous release tag.
       - run: npm run check:data
       - run: npm pack --dry-run
       - run: npm publish

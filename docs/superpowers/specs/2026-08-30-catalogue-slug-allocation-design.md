@@ -106,17 +106,27 @@ the distance and bearing into the *name* — "4.3 nm NE of Point Brazil" — so
 `toSlug(name)` already produces the qualified form and the remaining
 disambiguator is `region`, present on 100% of stations.
 
-Measured against the bundled catalogue rather than assumed:
+Measured against the committed allocation for the whole bundled catalogue:
 
-| kind | stations | base-slug collisions | still colliding after `region` |
-|---|---|---|---|
-| tide | 2,765 | 65 slugs / 137 stations | **4 slugs / 8 stations** |
-| current | 842 | 64 slugs / 149 stations | **0** |
+| kind | stations | base-slug collisions | took `base-region` | reached the id rung |
+|---|---|---|---|---|
+| tide | 3,823 | 89 slugs / 196 stations | 107 | **0** |
+| current | 864 | 64 slugs / 149 stations | 85 | **0** |
 
-So rung 4 exists for eight tide stations. It is not dead code — `aberdeen` is
-Washington and Scotland, `albany` is New York and Western Australia — but it is
-rare enough that its output being ugly is acceptable, which is what justifies
-appending an id at all.
+**Rung 4 is never reached.** An earlier draft of this section put eight tide
+stations there, and that count was wrong: it appended `region` to every station
+in a colliding group, including the one entitled to keep the base, and then
+counted the resulting duplicates. The implemented rule gives the base to the
+lowest station id and only the losers take `base-region`, so a group of *n*
+produces one base and *n-1* regional slugs. Reaching rung 4 needs two *losers*
+in one group to share a region as well as a base, and across 4,687 stations that
+never happens: 192 regional slugs, all distinct.
+
+So rung 4 is a guarantee rather than a working rung — it is what makes the ladder
+total, since `${base}-${toSlug(id)}` is unique by construction. The collisions it
+was drafted for are real but resolve one rung earlier: `aberdeen` is Washington
+and Scotland (`aberdeen` / `aberdeen-scotland`), `albany` is New York and Western
+Australia (`albany` / `albany-western-australia`).
 
 That the residuals are Scotland and Western Australia is also a reminder that this
 catalogue is global, not regional.
@@ -296,7 +306,9 @@ directly, so a minor would understate it even though the curated 37 are untouche
   `^[a-z0-9-]+$`, asserted against an id containing `:` and `/`
 - Where several new stations share a base, the lowest station id receives it
 - A station with no region skips rung 3 and allocates at rung 4
-- The eight known tide collisions that survive `region` each allocate distinctly
+- Two stations sharing a base *and* a region: the lowest id keeps `base-region` and
+  the other falls to the id rung. Synthetic, because the real catalogue never
+  reaches rung 4
 - The artifact contains no wall-clock field: two builds from one catalogue are
   byte-identical
 
