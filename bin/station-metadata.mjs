@@ -8,6 +8,8 @@ import { loadCorrections, validateCorrections, validateAgainstStations } from ".
 import { validatePositions, coverageWarnings, coverageFailures } from "../src/validate-positions.js";
 import { loadRegistry, validateRegistry } from "../src/registry.js";
 import { isWithinCoverage } from "../src/coastline.js";
+import { buildSlugTable, emptyTable, checkSlugTable } from "../src/slug-table.js";
+import { DEPARTURE_LIMIT } from "../src/catalogue.js";
 import { fileURLToPath } from "node:url";
 
 const corrections = loadCorrections(
@@ -23,6 +25,11 @@ const lockPath = fileURLToPath(new URL("../data/audit.lock.json", import.meta.ur
 /** SHA-256 of the coastline file, so a lock records which coastline it was built against. */
 function coastlineFingerprint() {
   return `sha256-${createHash("sha256").update(readFileSync(coastlinePath)).digest("hex")}`;
+}
+
+/** `sha256-<hex>` of a catalogue file's exact bytes, so the table records what it was built from. */
+function fingerprint(text) {
+  return `sha256-${createHash("sha256").update(text).digest("hex")}`;
 }
 
 /** Read, parse and shape-check a stations file, or print a clear message and exit 1. Shared by every command that takes a stations.json argument. */
@@ -221,10 +228,137 @@ if (command === "check") {
   process.exit(0);
 }
 
-// ponytail: slugs/check-slugs are retired here with the old slugs-lock API;
-// Task 5 reintroduces them against the catalogue-backed slug table.
+const slugsPath = fileURLToPath(new URL("../data/slugs.json", import.meta.url));
+const tombstonesPath = fileURLToPath(new URL("../data/slug-tombstones.json", import.meta.url));
 
-console.error("usage: station-metadata <validate|audit|lock|check> [stations.json]");
-console.error("  validate [stations.json]  stations file is optional; supplying it also checks");
-console.error("                            each correction's distance from the published position");
+/** Read a JSON artifact, or a default when it does not exist yet. */
+function readArtifact(path, fallback) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (err) {
+    if (err.code === "ENOENT") return fallback;
+    throw err;
+  }
+}
+
+/**
+ * Slugs reserved by `formerSlugs` on the hand-curated records.
+ *
+ * These are live redirects. Reallocating one would make an existing link resolve
+ * to a different station. Both files are already loaded at the top of this file.
+ */
+function reservedSlugs() {
+  const reserved = { tide: new Set(), current: new Set() };
+  for (const record of [...corrections.values(), ...registry.values()]) {
+    if (!Array.isArray(record.formerSlugs)) continue;
+    for (const former of record.formerSlugs) {
+      // A record with no explicit kind (every corrections entry) could belong to
+      // either namespace, so reserve in both: over-reserving costs an uglier slug,
+      // under-reserving points a live redirect at a different station.
+      if (record.kind === "tide" || record.kind === undefined) reserved.tide.add(former);
+      if (record.kind !== "tide") reserved.current.add(former);
+    }
+  }
+  return reserved;
+}
+
+/**
+ * Read both catalogues, or exit.
+ *
+ * Both are mandatory. Under allocation semantics a station absent from the
+ * input is indistinguishable from one that has departed, so a forgotten
+ * argument reads as hundreds of departures and tombstones live stations
+ * permanently. The mistake is not recoverable by re-running.
+ */
+function readCatalogues(command, argv) {
+  const paths = { tide: [], current: [] };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--tides") paths.tide.push(argv[++i]);
+    else if (argv[i] === "--currents") paths.current.push(argv[++i]);
+  }
+
+  const incomplete =
+    paths.tide.length === 0 ||
+    paths.current.length === 0 ||
+    paths.tide.includes(undefined) ||
+    paths.current.includes(undefined);
+  if (incomplete) {
+    console.error(`usage: station-metadata ${command} --tides <file> [--tides <file>] --currents <file> [--currents <file>]`);
+    console.error("  every catalogue file for both kinds is required. An absent station is");
+    console.error("  indistinguishable from a departed one, and a departure tombstones a");
+    console.error("  slug permanently.");
+    console.error("  The bundled catalogue is four files: NOAA tides and CHS stations are");
+    console.error("  both tide; NOAA currents and CHS current gates are both current.");
+    process.exit(1);
+  }
+
+  const catalogues = {};
+  for (const kind of ["tide", "current"]) {
+    const stations = [];
+    const digests = [];
+    for (const path of paths[kind]) {
+      stations.push(...readStationsFile(command, path));
+      digests.push(fingerprint(readFileSync(path, "utf8")));
+    }
+    // Ids are the join key for every consumer; a duplicate across two files of
+    // one kind would let the second silently overwrite the first's allocation.
+    const seen = new Set();
+    for (const station of stations) {
+      if (seen.has(station.id)) {
+        console.error(`${command}: duplicate station id "${station.id}" across ${kind} catalogues`);
+        process.exit(1);
+      }
+      seen.add(station.id);
+    }
+    catalogues[kind] = { stations, digest: digests.join("+") };
+  }
+  return catalogues;
+}
+
+if (command === "slugs") {
+  const catalogues = readCatalogues("slugs", process.argv.slice(3));
+  const previous = readArtifact(slugsPath, emptyTable());
+  const tombstones = readArtifact(tombstonesPath, { tide: {}, current: {} });
+  const reserved = reservedSlugs();
+
+  const { table, tombstones: nextTombstones, gone } = buildSlugTable({ previous, tombstones, reserved, catalogues });
+
+  if (gone.length > DEPARTURE_LIMIT && !process.argv.includes("--accept-departures")) {
+    console.error(`slugs: ${gone.length} stations departed, above the limit of ${DEPARTURE_LIMIT}`);
+    console.error("  a truncated or partial catalogue looks exactly like this, and a");
+    console.error("  tombstone is permanent - check the input before re-running with");
+    console.error("  --accept-departures");
+    console.error(`  first few: ${gone.slice(0, 5).join(", ")}`);
+    process.exit(1);
+  }
+
+  writeFileSync(slugsPath, JSON.stringify(table, null, 2) + "\n");
+  writeFileSync(tombstonesPath, JSON.stringify(nextTombstones, null, 2) + "\n");
+  const total = Object.keys(table.tide).length + Object.keys(table.current).length;
+  console.log(`wrote ${slugsPath} - ${total} station(s), ${gone.length} tombstoned`);
+  process.exit(0);
+}
+
+if (command === "check-slugs") {
+  const catalogues = readCatalogues("check-slugs", process.argv.slice(3));
+  const committed = readArtifact(slugsPath, emptyTable());
+  const tombstones = readArtifact(tombstonesPath, { tide: {}, current: {} });
+
+  const { table } = buildSlugTable({ previous: committed, tombstones, reserved: reservedSlugs(), catalogues });
+  const problems = checkSlugTable(committed, table, tombstones);
+
+  if (problems.length > 0) {
+    for (const problem of problems) console.error(`  ${problem}`);
+    console.error(`\n${problems.length} problem(s) - a published slug may not move`);
+    process.exit(1);
+  }
+  const total = Object.keys(committed.tide).length + Object.keys(committed.current).length;
+  console.log(`check-slugs: ${total} station(s) match the committed table`);
+  process.exit(0);
+}
+
+console.error("usage: station-metadata <validate|audit|lock|check|slugs|check-slugs> [args]");
+console.error("  slugs --tides <f> --currents <f>        allocate slugs for new stations");
+console.error("  check-slugs --tides <f> --currents <f>  fail if a published slug moved");
+console.error("  both flags repeat: the bundled catalogue is four files across two kinds");
 process.exit(1);
