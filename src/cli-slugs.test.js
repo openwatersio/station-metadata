@@ -2,9 +2,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const cli = fileURLToPath(new URL("../bin/station-metadata.mjs", import.meta.url));
+const slugsPath = fileURLToPath(new URL("../data/slugs.json", import.meta.url));
+const tombstonesPath = fileURLToPath(new URL("../data/slug-tombstones.json", import.meta.url));
 
 function run(args) {
   try {
@@ -25,3 +28,41 @@ test("slugs refuses to run with only one kind", () => {
   assert.equal(code, 1);
   assert.match(out, /--currents/);
 });
+
+// The registry owns three stations that appear in none of the four bundled
+// catalogue files (chs-arran-rapids, noaa-boundary-pass, chs-malibu-rapids -
+// all `current`). This runs the real CLI against the real catalogue files, not
+// the merge helper in isolation, because a test on the helper's shape would
+// stay green even if readCatalogues never called it.
+const resources = process.env.RESOURCES;
+test(
+  "slugs table includes registry-only stations no catalogue file contains",
+  { skip: resources ? false : "RESOURCES env var not set - skipping catalogue-backed test" },
+  () => {
+    const args = [
+      "slugs",
+      "--tides",
+      `${resources}/stations.json`,
+      "--tides",
+      `${resources}/chs-stations.json`,
+      "--currents",
+      `${resources}/currents.json`,
+      "--currents",
+      `${resources}/chs-current-gates.json`,
+    ];
+    try {
+      const { code, out } = run(args);
+      assert.equal(code, 0, out);
+      const table = JSON.parse(readFileSync(slugsPath, "utf8"));
+      for (const id of ["chs-arran-rapids", "noaa-boundary-pass", "chs-malibu-rapids"]) {
+        assert.ok(id in table.current, `expected ${id} in current table, got: ${Object.keys(table.current).join(", ")}`);
+        assert.ok(!(id in table.tide), `${id} should not be in the tide table`);
+      }
+    } finally {
+      // These artifacts are the next task's to produce; this test must not
+      // leave them behind for git to notice.
+      if (existsSync(slugsPath)) unlinkSync(slugsPath);
+      if (existsSync(tombstonesPath)) unlinkSync(tombstonesPath);
+    }
+  },
+);

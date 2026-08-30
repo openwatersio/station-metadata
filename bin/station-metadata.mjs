@@ -310,6 +310,24 @@ function readCatalogues(command, argv) {
       }
       seen.add(station.id);
     }
+
+    // The registry owns a few stations no provider bundle contains at all -
+    // CHS rapids nobody publishes a feed for, and a NOAA current station
+    // carried here because currents-vault dropped its own identity in this
+    // registry's favour (see registry.js). Allocation treats an absent id as
+    // a departure and tombstones its slug permanently, so if only catalogue
+    // files fed this table, a registry-only station's already-published slug
+    // would be lost the first time this command ran. The registry fills that
+    // gap, but never overrides: a station a catalogue file also names keeps
+    // the catalogue's entry, because that one carries `region` and allocates
+    // a better slug.
+    for (const [id, record] of registry) {
+      if (seen.has(id)) continue;
+      if ((record.kind === "tide" ? "tide" : "current") !== kind) continue;
+      stations.push({ id, name: record.name });
+      seen.add(id);
+    }
+
     catalogues[kind] = { stations, digest: digests.join("+") };
   }
   return catalogues;
