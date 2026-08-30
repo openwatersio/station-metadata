@@ -33,7 +33,8 @@ The spec describes `slugs.lock.json` becoming the allocation record *and* introd
 | `src/slug.js` | Unchanged. `toSlug(name)` is the only derivation primitive. |
 | `src/allocate.js` | **New.** Pure allocation for one kind: the rung ladder and its determinism. Knows nothing about files, kinds or catalogues. |
 | `src/slug-table.js` | **New.** The artifact: read, build across kinds, check. Replaces `src/slugs-lock.js`. |
-| `src/catalogue.js` | **New.** Reading and fingerprinting a catalogue file, and the departure guard. |
+| `src/catalogue.js` | **New.** The departure guard. Pure — no Node builtins, because it is reachable from the package root. |
+| `src/fingerprint.js` | **New.** `node:crypto` digest. Imported only by `bin/`, never re-exported from `src/index.js`. |
 | `bin/station-metadata.mjs` | Modified. `slugs` and `check-slugs` take mandatory per-kind catalogue paths. |
 | `data/slugs.json` | **New generated artifact.** Replaces `data/slugs.lock.json`. |
 | `data/slug-tombstones.json` | **New generated artifact.** Departed slugs, never reallocated. |
@@ -242,9 +243,18 @@ git commit -m "feat: allocate slugs once, deterministically, by station id"
 
 **Interfaces:**
 - Produces:
-  - `fingerprint(text) -> string` — `sha256-<hex>` of the exact bytes
-  - `departures(previousIds, catalogueIds) -> string[]` — sorted ids present before and absent now
-  - `DEPARTURE_LIMIT` — the count above which a run must be refused
+  - from `src/catalogue.js` (pure, root-exportable):
+    - `departures(previousIds, catalogueIds) -> string[]` — sorted ids present before and absent now
+    - `DEPARTURE_LIMIT` — the count above which a run must be refused
+  - from `src/fingerprint.js` (**Node-only, never root-exported**):
+    - `fingerprint(text) -> string` — `sha256-<hex>` of the exact bytes
+
+**Why two files.** `src/browser-safe.test.js` walks the static import graph from
+`src/index.js` and fails on any Node builtin. It is the regression test for a real
+outage: `createBundledResolver` used `node:fs`, a bundler externalized it, and the
+PWA went blank with nothing in the console pointing here. A `node:crypto` import
+reachable from the root would fail that test and reopen that failure class, so the
+digest lives in a module only `bin/` imports.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -252,7 +262,8 @@ git commit -m "feat: allocate slugs once, deterministically, by station id"
 // src/catalogue.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fingerprint, departures, DEPARTURE_LIMIT } from "./catalogue.js";
+import { departures, DEPARTURE_LIMIT } from "./catalogue.js";
+import { fingerprint } from "./fingerprint.js";
 
 test("fingerprint matches the repo's existing sha256-<hex> convention", () => {
   const fp = fingerprint("hello");
@@ -286,8 +297,24 @@ Expected: FAIL — `Cannot find module './catalogue.js'`
 - [ ] **Step 3: Write the implementation**
 
 ```js
-// src/catalogue.js
+// src/fingerprint.js
 import { createHash } from "node:crypto";
+
+/**
+ * `sha256-<hex>` of the exact bytes, matching coastlineFingerprint in bin/.
+ *
+ * Deliberately NOT re-exported from src/index.js: node:crypto reachable from the
+ * package root fails src/browser-safe.test.js and reopens the bundler
+ * externalization outage that test exists to prevent. Only bin/ imports this.
+ */
+export function fingerprint(text) {
+  return `sha256-${createHash("sha256").update(text).digest("hex")}`;
+}
+```
+
+```js
+// src/catalogue.js
+// No Node builtins here: this module is reachable from the package root.
 
 /**
  * The number of departures above which a run must stop and ask.
@@ -299,11 +326,6 @@ import { createHash } from "node:crypto";
  * a provider event.
  */
 export const DEPARTURE_LIMIT = 10;
-
-/** `sha256-<hex>` of the exact bytes, matching coastlineFingerprint in bin/. */
-export function fingerprint(text) {
-  return `sha256-${createHash("sha256").update(text).digest("hex")}`;
-}
 
 /**
  * Ids allocated previously and absent from the catalogue now.
@@ -326,9 +348,14 @@ Expected: PASS, 4 tests
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/catalogue.js src/catalogue.test.js
+git add src/catalogue.js src/fingerprint.js src/catalogue.test.js
 git commit -m "feat: fingerprint a catalogue and detect implausible departures"
 ```
+
+- [ ] **Step 6: Prove the root stayed browser-safe**
+
+Run: `node --test src/browser-safe.test.js`
+Expected: PASS. If it fails, `fingerprint` has leaked into the root import graph.
 
 ---
 
@@ -352,7 +379,10 @@ git commit -m "feat: fingerprint a catalogue and detect implausible departures"
     - `catalogues`: `{ tide: { stations, digest }, current: { stations, digest } }`
   - `emptyTable() -> { catalogue: {}, tide: {}, current: {} }`
   - `readSlugTable(json) -> object`
-  - `checkSlugTable(previous, current) -> string[]` — problems, empty when clean
+  - `checkSlugTable(previous, current, tombstones) -> string[]` — problems, empty when clean.
+    A prior id missing from `current` is legitimate **only** if `tombstones` holds it
+    with the identical slug; without the tombstones argument every accepted departure
+    would fail this check forever.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -458,7 +488,7 @@ test("the table round-trips through JSON and carries no wall-clock field", () =>
 test("checkSlugTable reports a slug that moved", () => {
   const before = { ...emptyTable(), tide: { "noaa/1": "everett" } };
   const after = { ...emptyTable(), tide: { "noaa/1": "everett-wa" } };
-  const problems = checkSlugTable(before, after);
+  const problems = checkSlugTable(before, after, { tide: {}, current: {} });
   assert.equal(problems.length, 1);
   assert.match(problems[0], /noaa\/1.*everett.*everett-wa/);
 });
@@ -466,15 +496,30 @@ test("checkSlugTable reports a slug that moved", () => {
 test("checkSlugTable is silent when a station is merely added", () => {
   const before = { ...emptyTable(), tide: { "noaa/1": "everett" } };
   const after = { ...emptyTable(), tide: { "noaa/1": "everett", "noaa/2": "la-push" } };
-  assert.deepEqual(checkSlugTable(before, after), []);
+  assert.deepEqual(checkSlugTable(before, after, { tide: {}, current: {} }), []);
 });
 
 test("checkSlugTable reports a slug that vanished without being tombstoned", () => {
   const before = { ...emptyTable(), tide: { "noaa/1": "everett" } };
   const after = emptyTable();
-  const problems = checkSlugTable(before, after);
+  const problems = checkSlugTable(before, after, { tide: {}, current: {} });
   assert.equal(problems.length, 1);
   assert.match(problems[0], /noaa\/1/);
+});
+
+test("checkSlugTable accepts a departure that was properly tombstoned", () => {
+  // Without this, every accepted departure fails the release-tag check forever.
+  const before = { ...emptyTable(), tide: { "noaa/1": "everett" } };
+  const after = emptyTable();
+  assert.deepEqual(checkSlugTable(before, after, { tide: { "noaa/1": "everett" }, current: {} }), []);
+});
+
+test("checkSlugTable rejects a tombstone that changed the slug", () => {
+  const before = { ...emptyTable(), tide: { "noaa/1": "everett" } };
+  const after = emptyTable();
+  const problems = checkSlugTable(before, after, { tide: { "noaa/1": "everett-wa" }, current: {} });
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /published as "everett"/);
 });
 ```
 
@@ -556,13 +601,22 @@ export function buildSlugTable({ previous, tombstones, reserved, catalogues }) {
  * derivation, comparing it against the data it produced proves nothing: an edit
  * touching both is self-consistent and undetectable.
  */
-export function checkSlugTable(previous, current) {
+export function checkSlugTable(previous, current, tombstones) {
   const problems = [];
   for (const kind of KINDS) {
     for (const [id, was] of Object.entries(previous[kind] ?? {})) {
       const now = (current[kind] ?? {})[id];
       if (now === undefined) {
-        problems.push(`${kind}/${id}: slug "${was}" disappeared without being tombstoned`);
+        // Departing is allowed; losing the name is not. The slug must still be
+        // held, unchanged, in the tombstones - otherwise it is free to be
+        // reallocated and an old link would resolve to a different station.
+        const buried = (tombstones?.[kind] ?? {})[id];
+        if (buried === was) continue;
+        problems.push(
+          buried === undefined
+            ? `${kind}/${id}: slug "${was}" disappeared without being tombstoned`
+            : `${kind}/${id}: tombstoned as "${buried}" but was published as "${was}"`,
+        );
       } else if (now !== was) {
         problems.push(`${kind}/${id}: slug moved from "${was}" to "${now}"`);
       }
@@ -575,7 +629,7 @@ export function checkSlugTable(previous, current) {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `node --test src/slug-table.test.js`
-Expected: PASS, 9 tests
+Expected: PASS, 11 tests
 
 - [ ] **Step 5: Remove the module this replaces**
 
@@ -602,6 +656,7 @@ git commit -m "feat: the slug table is the allocation record, and tombstones its
 **Files:**
 - Modify: `src/index.js:17`
 - Modify: `index.d.ts`
+- Modify: `types/surface.ts:27-29,130-132,140`
 
 **Interfaces:**
 - Consumes: everything from Tasks 1-3
@@ -619,9 +674,13 @@ with:
 
 ```js
 export { allocateSlugs } from "./allocate.js";
-export { fingerprint, departures, DEPARTURE_LIMIT } from "./catalogue.js";
+export { departures, DEPARTURE_LIMIT } from "./catalogue.js";
 export { buildSlugTable, emptyTable, readSlugTable, checkSlugTable } from "./slug-table.js";
 ```
+
+**Do not add `fingerprint` here.** It imports `node:crypto`; the root must reach no
+Node builtin. `src/browser-safe.test.js` enforces this and exists because a
+bundler once externalized such an import and blanked a production site.
 
 - [ ] **Step 2: Update `index.d.ts`**
 
@@ -648,7 +707,6 @@ export function allocateSlugs(input: {
   taken: Set<string>;
 }): Map<string, string>;
 
-export function fingerprint(text: string): string;
 export function departures(previousIds: Iterable<string>, catalogueIds: Iterable<string>): string[];
 export const DEPARTURE_LIMIT: number;
 
@@ -659,18 +717,42 @@ export function buildSlugTable(input: {
   tombstones: Tombstones;
   catalogues: Record<string, { stations: CatalogueStation[]; digest: string }>;
 }): { table: SlugTable; tombstones: Tombstones; gone: string[] };
-export function checkSlugTable(previous: SlugTable, current: SlugTable): string[];
+export function checkSlugTable(previous: SlugTable, current: SlugTable, tombstones: Tombstones): string[];
 ```
 
-- [ ] **Step 3: Run the suite and the type check**
+- [ ] **Step 3: Update `types/surface.ts`**
+
+It imports and exercises the deleted API at `:27-29`, `:130-132` and `:140`, so
+`npm run test:types` fails until it is updated. Replace the three imports with
+`buildSlugTable, emptyTable, readSlugTable, checkSlugTable` and the three usage
+lines with:
+
+```ts
+const slugTable: SlugTable = buildSlugTable({
+  previous: emptyTable(),
+  tombstones: { tide: {}, current: {} },
+  reserved: { tide: new Set<string>(), current: new Set<string>() },
+  catalogues: {
+    tide: { stations: [{ id: "noaa/1", name: "Everett", region: "WA" }], digest: "sha256-x" },
+    current: { stations: [], digest: "sha256-y" },
+  },
+}).table;
+const rereadTable: SlugTable = readSlugTable(JSON.stringify(slugTable));
+const slugProblems: string[] = checkSlugTable(slugTable, rereadTable, { tide: {}, current: {} });
+```
+
+and update the export list at `:140` to `slugTable, rereadTable, slugProblems`.
+
+- [ ] **Step 4: Run the suite and the type check**
 
 Run: `npm test`
-Expected: PASS — both `node --test` and `tsc -p tsconfig.json`
+Expected: PASS — both `node --test` and `tsc -p tsconfig.json`, including
+`src/browser-safe.test.js`
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/index.js index.d.ts
+git add src/index.js index.d.ts types/surface.ts
 git commit -m "feat!: replace the slugs lock API with the slug table"
 ```
 
@@ -683,8 +765,15 @@ git commit -m "feat!: replace the slugs lock API with the slug table"
 - Test: `src/cli-slugs.test.js` (new)
 
 **Interfaces:**
-- Consumes: `buildSlugTable`, `readSlugTable`, `checkSlugTable`, `fingerprint`, `DEPARTURE_LIMIT`
-- Produces: `station-metadata slugs <tides.json> <currents.json>` and `station-metadata check-slugs <tides.json> <currents.json>`
+- Consumes: `buildSlugTable`, `emptyTable`, `checkSlugTable` (Task 3), `fingerprint` (Task 2), `DEPARTURE_LIMIT` (Task 2)
+- Produces:
+  - `station-metadata slugs --tides <f> [--tides <f>] --currents <f> [--currents <f>]`
+  - `station-metadata check-slugs` with the same flags
+
+  Repeatable per-kind flags rather than two positionals, because the catalogue is
+  **four files across two kinds**: NOAA tides (2,765) and CHS stations (1,058) are
+  both `tide`; NOAA currents (842) and CHS current gates (22) are both `current`.
+  Two positionals silently omit 1,080 stations.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -708,13 +797,13 @@ function run(args) {
 test("slugs refuses to run with no catalogue", () => {
   const { code, out } = run(["slugs"]);
   assert.equal(code, 1);
-  assert.match(out, /usage: station-metadata slugs <tides\.json> <currents\.json>/);
+  assert.match(out, /--tides/);
 });
 
-test("slugs refuses to run with only one catalogue", () => {
-  const { code, out } = run(["slugs", "some-tides.json"]);
+test("slugs refuses to run with only one kind", () => {
+  const { code, out } = run(["slugs", "--tides", "some-tides.json"]);
   assert.equal(code, 1);
-  assert.match(out, /usage: station-metadata slugs/);
+  assert.match(out, /--currents/);
 });
 ```
 
@@ -765,22 +854,53 @@ function reservedSlugs() {
  * argument reads as hundreds of departures and tombstones live stations
  * permanently. The mistake is not recoverable by re-running.
  */
-function readCatalogues(command, tidesPath, currentsPath) {
-  if (!tidesPath || !currentsPath) {
-    console.error(`usage: station-metadata ${command} <tides.json> <currents.json>`);
-    console.error("  both catalogues are required: an absent station is indistinguishable");
-    console.error("  from a departed one, and a departure tombstones a slug permanently");
+function readCatalogues(command, argv) {
+  const paths = { tide: [], current: [] };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--tides") paths.tide.push(argv[++i]);
+    else if (argv[i] === "--currents") paths.current.push(argv[++i]);
+  }
+
+  const incomplete =
+    paths.tide.length === 0 ||
+    paths.current.length === 0 ||
+    paths.tide.includes(undefined) ||
+    paths.current.includes(undefined);
+  if (incomplete) {
+    console.error(`usage: station-metadata ${command} --tides <file> [--tides <file>] --currents <file> [--currents <file>]`);
+    console.error("  every catalogue file for both kinds is required. An absent station is");
+    console.error("  indistinguishable from a departed one, and a departure tombstones a");
+    console.error("  slug permanently.");
+    console.error("  The bundled catalogue is four files: NOAA tides and CHS stations are");
+    console.error("  both tide; NOAA currents and CHS current gates are both current.");
     process.exit(1);
   }
-  return {
-    tide: { stations: readStationsFile(command, tidesPath), digest: fingerprint(readFileSync(tidesPath, "utf8")) },
-    current: { stations: readStationsFile(command, currentsPath), digest: fingerprint(readFileSync(currentsPath, "utf8")) },
-  };
+
+  const catalogues = {};
+  for (const kind of ["tide", "current"]) {
+    const stations = [];
+    const digests = [];
+    for (const path of paths[kind]) {
+      stations.push(...readStationsFile(command, path));
+      digests.push(fingerprint(readFileSync(path, "utf8")));
+    }
+    // Ids are the join key for every consumer; a duplicate across two files of
+    // one kind would let the second silently overwrite the first's allocation.
+    const seen = new Set();
+    for (const station of stations) {
+      if (seen.has(station.id)) {
+        console.error(`${command}: duplicate station id "${station.id}" across ${kind} catalogues`);
+        process.exit(1);
+      }
+      seen.add(station.id);
+    }
+    catalogues[kind] = { stations, digest: digests.join("+") };
+  }
+  return catalogues;
 }
 
 if (command === "slugs") {
-  const [, tidesPath, currentsPath] = process.argv.slice(2);
-  const catalogues = readCatalogues("slugs", tidesPath, currentsPath);
+  const catalogues = readCatalogues("slugs", process.argv.slice(3));
   const previous = readArtifact(slugsPath, emptyTable());
   const tombstones = readArtifact(tombstonesPath, { tide: {}, current: {} });
   const reserved = reservedSlugs();
@@ -817,13 +937,12 @@ and remove the `slugs-lock.js` import at `:6`.
 
 ```js
 if (command === "check-slugs") {
-  const [, tidesPath, currentsPath] = process.argv.slice(2);
-  const catalogues = readCatalogues("check-slugs", tidesPath, currentsPath);
+  const catalogues = readCatalogues("check-slugs", process.argv.slice(3));
   const committed = readArtifact(slugsPath, emptyTable());
   const tombstones = readArtifact(tombstonesPath, { tide: {}, current: {} });
 
   const { table } = buildSlugTable({ previous: committed, tombstones, reserved: reservedSlugs(), catalogues });
-  const problems = checkSlugTable(committed, table);
+  const problems = checkSlugTable(committed, table, tombstones);
 
   if (problems.length > 0) {
     for (const problem of problems) console.error(`  ${problem}`);
@@ -842,8 +961,9 @@ Replace the final `console.error("usage: ...")` with:
 
 ```js
 console.error("usage: station-metadata <validate|audit|lock|check|slugs|check-slugs> [args]");
-console.error("  slugs <tides.json> <currents.json>        allocate slugs for new stations");
-console.error("  check-slugs <tides.json> <currents.json>  fail if a published slug moved");
+console.error("  slugs --tides <f> --currents <f>        allocate slugs for new stations");
+console.error("  check-slugs --tides <f> --currents <f>  fail if a published slug moved");
+console.error("  both flags repeat: the bundled catalogue is four files across two kinds");
 ```
 
 - [ ] **Step 6: Run the tests**
@@ -876,15 +996,20 @@ git commit -m "feat!: require both catalogues and refuse implausible departures"
 In `package.json`, add to `scripts`:
 
 ```json
-"check:slugs": "node bin/station-metadata.mjs check-slugs \"$TIDES_JSON\" \"$CURRENTS_JSON\""
+"check:slugs": "node bin/station-metadata.mjs check-slugs --tides \"$NOAA_TIDES\" --tides \"$CHS_TIDES\" --currents \"$NOAA_CURRENTS\" --currents \"$CHS_GATES\""
 ```
 
-- [ ] **Step 2: Add the CI step**
+- [ ] **Step 2: Replace the existing CI invocation**
 
-In `.github/workflows/ci.yml`, after the existing test step:
+`.github/workflows/ci.yml:34` already runs `node bin/station-metadata.mjs
+check-slugs` **with no arguments**. Task 5 makes both catalogues mandatory, so
+that line now exits 1 on every PR before anything else runs. It must be
+*replaced*, not supplemented.
+
+Delete line 34 and its preceding comment, then add:
 
 ```yaml
-      - name: Check no published slug moved
+      - name: Check no published slug moved since the last release
         run: |
           # The prior record must be one this commit cannot edit. Comparing the
           # working tree against itself proves nothing once the table is an
@@ -899,7 +1024,8 @@ In `.github/workflows/ci.yml`, after the existing test step:
             const fs = await import("node:fs");
             const prev = JSON.parse(fs.readFileSync("/tmp/previous-slugs.json", "utf8"));
             const now = JSON.parse(fs.readFileSync("data/slugs.json", "utf8"));
-            const problems = checkSlugTable(prev, now);
+            const tombstones = JSON.parse(fs.readFileSync("data/slug-tombstones.json", "utf8"));
+            const problems = checkSlugTable(prev, now, tombstones);
             if (problems.length) { for (const p of problems) console.error("  " + p); process.exit(1); }
             console.log("no published slug moved since " + process.env.PREV);
           ' --input-type=module
@@ -907,18 +1033,28 @@ In `.github/workflows/ci.yml`, after the existing test step:
           PREV: ${{ github.sha }}
 ```
 
-- [ ] **Step 3: Remove the file this replaces**
+- [ ] **Step 3: Verify the old invocation is gone**
+
+Run: `grep -n "check-slugs" .github/workflows/ci.yml`
+Expected: no bare `check-slugs` invocation remains — only the release-tag
+comparison added above.
+
+- [ ] **Step 4: Remove the file this replaces**
+
+`data/slugs.lock.json` is deleted only after Task 7 has migrated its contents
+into `data/slugs.json`. Deleting it here would discard the 37 existing
+allocations, which is exactly the failure this whole design prevents.
 
 ```bash
-git rm data/slugs.lock.json
+git rm data/slugs.lock.json   # AFTER Task 7 step 2 confirms migration
 ```
 
-- [ ] **Step 4: Run the suite**
+- [ ] **Step 5: Run the suite**
 
 Run: `npm test`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add package.json .github/workflows/ci.yml
@@ -927,23 +1063,70 @@ git commit -m "ci: fail when a published slug moves since the last release"
 
 ---
 
-## Task 7: The first allocation
+## Task 7: Migrate the existing allocations, then allocate the rest
 
 **Files:**
 - Create: `data/slugs.json`, `data/slug-tombstones.json`
 - Modify: `package.json` — version to `4.0.0`
+- Delete: `data/slugs.lock.json` (only after step 3 passes)
 
 This task produces content, not code. **Review its diff as content.** The first allocation is the only moment these names can be chosen; after station pages ship, every one is permanent.
 
-- [ ] **Step 1: Run the allocation against the bundled catalogues**
+**The migration must happen before the allocation.** `data/slugs.lock.json` holds 37 allocations that are already published. If the first run starts from an empty table, they are reallocated from scratch and may move — the exact failure this entire design exists to prevent, committed in the very first commit that claims to prevent it.
+
+- [ ] **Step 1: Seed `slugs.json` from the existing lock**
+
+The lock is a flat `id -> slug` map with no kind. Kind comes from *which catalogue
+the id appears in*, which is exact and needs no heuristic about id prefixes.
+
+```bash
+node --input-type=module -e '
+import { readFileSync, writeFileSync } from "node:fs";
+const R = "../slackwater-ios/Slackwater/Resources/";
+const load = (f) => JSON.parse(readFileSync(R + f, "utf8"));
+const kindOf = new Map();
+for (const s of [...load("stations.json"), ...load("chs-stations.json")]) kindOf.set(s.id, "tide");
+for (const s of [...load("currents.json"), ...load("chs-current-gates.json")]) kindOf.set(s.id, "current");
+
+const lock = JSON.parse(readFileSync("data/slugs.lock.json", "utf8"));
+const seeded = { catalogue: {}, tide: {}, current: {} };
+const orphans = [];
+for (const [id, slug] of Object.entries(lock.slugs)) {
+  const kind = kindOf.get(id);
+  if (!kind) { orphans.push(id); continue; }
+  seeded[kind][id] = slug;
+}
+writeFileSync("data/slugs.json", JSON.stringify(seeded, null, 2) + "\n");
+const total = Object.keys(seeded.tide).length + Object.keys(seeded.current).length;
+console.log(`seeded ${total} of ${Object.keys(lock.slugs).length} locked allocations`);
+if (orphans.length) console.log(`orphans (in the lock, in no catalogue): ${orphans.join(", ")}`);
+'
+```
+
+Expected: `seeded 37 of 37 locked allocations`.
+
+**If any id is reported as an orphan, stop.** It means a curated station is not in
+any bundled catalogue, so migrating it needs a decision — tombstone it, or add the
+catalogue it belongs to — and guessing would either lose a published slug or
+allocate a second one for the same station.
+
+- [ ] **Step 2: Run the allocation against all four catalogue files**
 
 ```bash
 node bin/station-metadata.mjs slugs \
-  ../slackwater-ios/Slackwater/Resources/stations.json \
-  ../slackwater-ios/Slackwater/Resources/currents.json
+  --tides    ../slackwater-ios/Slackwater/Resources/stations.json \
+  --tides    ../slackwater-ios/Slackwater/Resources/chs-stations.json \
+  --currents ../slackwater-ios/Slackwater/Resources/currents.json \
+  --currents ../slackwater-ios/Slackwater/Resources/chs-current-gates.json
 ```
 
-Expected: `wrote .../data/slugs.json - 3607 station(s), 0 tombstoned`
+Expected: `wrote .../data/slugs.json - 4687 station(s), 0 tombstoned`
+
+**4,687 is the assertion.** 2,765 NOAA tide + 1,058 CHS = 3,823 tide; 842 NOAA
+current + 22 CHS gates = 864 current. Any other total means a file was omitted, and
+omitting a file at this step tombstones nothing yet but allocates nothing for those
+stations either — they would be allocated later, out of order, after other stations
+had taken the good names.
 
 - [ ] **Step 2: Verify every slug is valid and unique within its kind**
 
@@ -960,25 +1143,30 @@ node -e '
 '
 ```
 
-Expected: `tide 2765 slugs, 0 invalid, 0 duplicated` and `current 842 slugs, 0 invalid, 0 duplicated`
+Expected: `tide 3823 slugs, 0 invalid, 0 duplicated` and `current 864 slugs, 0 invalid, 0 duplicated`
 
-- [ ] **Step 3: Confirm the curated 37 kept their slugs**
+- [ ] **Step 4: Confirm every one of the 37 kept its slug**
+
+Not a sample. All 37, read from the lock itself rather than from a hand-copied
+list, because a hand-copied list is exactly where a missed CHS entry would hide.
 
 ```bash
 node -e '
+  const lock = require("./data/slugs.lock.json");
   const t = require("./data/slugs.json");
-  const prior = { "noaa/9447659": "everett", "noaa/9442396": "la-push" };
-  for (const [id, want] of Object.entries(prior)) {
-    const got = t.tide[id];
-    console.log(id, want, "->", got, got === want ? "OK" : "MOVED");
-    if (got !== want) process.exit(1);
+  let moved = 0;
+  for (const [id, want] of Object.entries(lock.slugs)) {
+    const got = t.tide[id] ?? t.current[id];
+    if (got !== want) { console.log("MOVED", id, want, "->", got); moved++; }
   }
+  console.log(`${Object.keys(lock.slugs).length} checked, ${moved} moved`);
+  if (moved) process.exit(1);
 '
 ```
 
-Expected: every line `OK`. A `MOVED` here means the preservation path is broken — stop and fix Task 1 rather than accepting the diff.
+Expected: `37 checked, 0 moved`. Any `MOVED` means the preservation path is broken — stop and fix Task 1 rather than accepting the diff.
 
-- [ ] **Step 4: Read the eight rung-3 allocations**
+- [ ] **Step 5: Read the allocations that fell through to the id rung**
 
 ```bash
 node -e '
@@ -989,18 +1177,30 @@ node -e '
 '
 ```
 
-These are the allocations that fell through to the id rung. Expect roughly eight, all tide. Read them: if any is genuinely bad, add an explicit `slug:` to `registry.yaml` for that station and re-run **now**, because after publication it cannot be changed without a redirect.
+Read them. The measured expectation from the design work was about eight, all
+tide, from names that collide even after `region` — `aberdeen` in WA and Scotland,
+`albany` in NY and Western Australia. Adding CHS may add a few more. If any is
+genuinely bad, add an explicit `slug:` to `registry.yaml` for that station and
+re-run **now**: after publication it cannot be changed without a redirect.
 
-- [ ] **Step 5: Bump the version**
+- [ ] **Step 6: Remove the lock the table replaces**
+
+Only now, with the migration verified in step 4.
+
+```bash
+git rm data/slugs.lock.json
+```
+
+- [ ] **Step 7: Bump the version**
 
 Set `"version": "4.0.0"` in `package.json`.
 
-- [ ] **Step 6: Run the whole suite**
+- [ ] **Step 8: Run the whole suite**
 
 Run: `npm test`
-Expected: PASS
+Expected: PASS, including `src/browser-safe.test.js` and the type check
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add data/slugs.json data/slug-tombstones.json package.json
@@ -1011,9 +1211,9 @@ git commit -m "feat!: allocate slugs for the whole bundled catalogue"
 
 ## Done when
 
-- `npm test` passes, including the type check
-- `data/slugs.json` holds 3,607 slugs, all matching `^[a-z0-9-]+$`, unique within each kind
-- The curated slugs that existed before are unchanged
+- `npm test` passes, including the type check and `src/browser-safe.test.js`
+- `data/slugs.json` holds **4,687** slugs — 3,823 tide, 864 current — all matching `^[a-z0-9-]+$`, unique within each kind
+- All 37 previously locked slugs are unchanged, verified against the lock itself
 - `station-metadata slugs` with a missing catalogue argument exits 1
 - CI fails if a published slug moves relative to the previous release tag
 - `data/slugs.lock.json` and `src/slugs-lock.js` are gone
