@@ -172,6 +172,12 @@ export function allocateSlugs(input: {
   taken: Set<string>;
 }): Map<string, string>;
 
+/** Ids allocated previously and absent from the catalogue now. */
+export function departures(previousIds: Iterable<string>, catalogueIds: Iterable<string>): string[];
+
+/** The number of departures above which a run must stop and ask. */
+export const DEPARTURE_LIMIT: number;
+
 /** One station's pinned position and audit verdict. */
 export interface LockEntry {
   position: [number, number];
