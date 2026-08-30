@@ -137,6 +137,36 @@ station pages ship, every one is permanent.
 - **Nothing from openwaters.io** — its station URLs are source-namespaced ids
   rather than slugs, so this regeneration cannot move them.
 
+## Coverage guarantee, and how to detect skew
+
+`slugs.json` covers **exactly the catalogue it was generated against** — no more,
+no less. It is not a claim about any consumer's bundle.
+
+That distinction matters to anything using the table as a membership test. A
+consumer bundling a newer catalogue has stations with no row; one bundling an
+older catalogue sees rows for stations it does not have. Neither is an error, and
+neither is detectable from the table's contents alone.
+
+So the artifact records what it was built from:
+
+```json
+{
+  "generated": "2026-08-30",
+  "catalogue": { "currents": "…", "tides": "…" },
+  "tide": { },
+  "current": { }
+}
+```
+
+Consumers compare that against the catalogue release they bundle and fail loudly
+on a mismatch rather than silently treating an absent row as "no such station".
+
+**A membership test wants the consumer's own artifact, not this table.** For
+`slackwater.xyz` the authoritative list of stations that have a page is its
+generated sitemap — one entry per prerendered page, by construction. Anything
+asking "does Slackwater have this station" should key on that. This table answers
+"what is this station's slug", which is a different question.
+
 ## Versioning
 
 A major, `4.0.0`. The lock file's meaning changes and consumers read these files
