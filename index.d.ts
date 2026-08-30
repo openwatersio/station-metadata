@@ -329,3 +329,30 @@ export function readSlugsLock(json: string): SlugsLock;
  * not recorded in that station's `formerSlugs`.
  */
 export function checkSlugs(lock: SlugsLock, corrections: Corrections, registry: Registry): string[];
+
+/** The slug allocation record, partitioned by kind. Kind is a URL namespace: the same slug may appear in both. */
+export interface SlugTable {
+  catalogue: Record<string, { digest: string; stations: number }>;
+  tide: Record<string, string>;
+  current: Record<string, string>;
+}
+
+/** A departed station's slug, retained per kind rather than freed, so an old link never resolves to a different station. */
+export type Tombstones = { tide: Record<string, string>; current: Record<string, string> };
+
+/** An empty table, for a first run or a caller with nothing on disk. */
+export function emptyTable(): SlugTable;
+
+/** Parse a table from its on-disk JSON. */
+export function readSlugTable(json: string): SlugTable;
+
+/** Build the table from the previous one and the current catalogues. Preserves every previous allocation. */
+export function buildSlugTable(input: {
+  previous: SlugTable;
+  tombstones: Tombstones;
+  reserved: { tide: Set<string>; current: Set<string> };
+  catalogues: Record<string, { stations: CatalogueStation[]; digest: string }>;
+}): { table: SlugTable; tombstones: Tombstones; gone: string[] };
+
+/** Compare a table against an immutable prior one. Returns human-readable problems; empty means clean. */
+export function checkSlugTable(previous: SlugTable, current: SlugTable, tombstones: Tombstones): string[];
