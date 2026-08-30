@@ -30,7 +30,7 @@
   "bugs": {
     "url": "https://github.com/openwatersio/station-metadata/issues"
   },
-  "homepage": "https://github.com/openwatersio/station-metadata#readme",
+  "homepage": "https://openwaters.io",
   "publishConfig": {
     "access": "public"
   },
