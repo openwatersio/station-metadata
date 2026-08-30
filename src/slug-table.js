@@ -44,6 +44,19 @@ export function buildSlugTable({ previous, tombstones, reserved, catalogues }) {
       gone.push(id);
     }
 
+    // A station that comes back reclaims the slug it was buried with, and the
+    // tombstone goes. Otherwise it would be allocated a fresh one and end up
+    // published twice - live under the new slug, retired under the old - and a
+    // consumer serving tombstones as "no longer published" would say that about
+    // a station that is right there in the catalogue.
+    for (const id of catalogueIds) {
+      if (previousForKind.has(id)) continue;
+      const buried = nextTombstones[kind][id];
+      if (buried === undefined) continue;
+      previousForKind.set(id, buried);
+      delete nextTombstones[kind][id];
+    }
+
     const allocated = allocateSlugs({
       stations,
       existing: previousForKind,

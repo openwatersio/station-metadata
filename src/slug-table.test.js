@@ -132,3 +132,34 @@ test("checkSlugTable rejects a tombstone that changed the slug", () => {
   assert.equal(problems.length, 1);
   assert.match(problems[0], /published as "everett"/);
 });
+
+test("a station that reappears reclaims its tombstoned slug", () => {
+  // Two published slugs for one station is the failure here: allocated fresh
+  // in slugs.json while still buried in slug-tombstones.json under the old
+  // name. Whichever a consumer reads, the other one is wrong.
+  const { table, tombstones, gone } = buildSlugTable({
+    previous: emptyTable(),
+    tombstones: { tide: { "noaa/1": "everett" }, current: {} },
+    reserved: { tide: new Set(), current: new Set() },
+    catalogues: { tide: cat([S("noaa/1", "Everett", "WA")]), current: cat([]) },
+  });
+  assert.equal(table.tide["noaa/1"], "everett");
+  assert.deepEqual(tombstones.tide, {});
+  assert.deepEqual(gone, []);
+});
+
+test("reclaiming frees nothing for anyone else", () => {
+  // The returning station takes its own name back; a second station wanting
+  // the same base still cannot have it.
+  const { table } = buildSlugTable({
+    previous: emptyTable(),
+    tombstones: { tide: { "noaa/1": "everett" }, current: {} },
+    reserved: { tide: new Set(), current: new Set() },
+    catalogues: {
+      tide: cat([S("noaa/1", "Everett", "WA"), S("noaa/2", "Everett", "MA")]),
+      current: cat([]),
+    },
+  });
+  assert.equal(table.tide["noaa/1"], "everett");
+  assert.equal(table.tide["noaa/2"], "everett-ma");
+});
