@@ -177,9 +177,14 @@ argument — reads as hundreds of departures and tombstones live stations.
 Tombstones are permanent. The mistake is not recoverable by re-running.
 
 So `station-metadata slugs` **requires an explicit catalogue path for every
-kind** and refuses to run otherwise. Before mutating anything it validates the
-input's identity — recording each catalogue's digest and station count, and
-comparing them against what the lock was last built from.
+kind** and refuses to run otherwise, and records each catalogue's digest and
+station count in the artifact as provenance.
+
+The digest is recorded, not gated on. A legitimate catalogue update changes it
+every time, so comparing digests would fail on exactly the runs that should
+succeed. What actually catches bad input is the departure guard below, because
+the failure being defended against is *stations going missing*, not the
+catalogue changing.
 
 And it **refuses on implausible departure**: if more than a small number of
 stations present in the lock are absent from the input, the run aborts and
