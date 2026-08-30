@@ -1,5 +1,4 @@
 import { cleanName } from "./clean.js";
-import { toSlug } from "./slug.js";
 import { namesOverlap } from "./names.js";
 import { distanceKm } from "./distance.js";
 
@@ -66,16 +65,24 @@ export const RECOGNITION_KM = 3;
  *     `createPlacesResolver` uses. Labels a *station*; the names are captions
  *     nobody stores. Opt-in because it is ~890 KB, and the consumers that want
  *     it are build-time generators rather than browser bundles.
+ *
+ * `slugs` is the published allocation table, id → slug, and it is the ONLY
+ * source of a resolved slug. See `publishedSlug`.
  */
-export function createResolver({ corrections = new Map(), gazetteer = [], registry = new Map() } = {}) {
+export function createResolver({
+  corrections = new Map(),
+  gazetteer = [],
+  registry = new Map(),
+  slugs = new Map(),
+} = {}) {
   return function resolve(station) {
     const owned = registry.get(station.id);
-    if (owned) return resolveOwned(station.id, owned);
+    if (owned) return resolveOwned(station.id, owned, slugs);
 
     const override = corrections.get(station.id) ?? {};
     const split = splitQualifier(cleanName(station.name));
     const name = override.name ?? split.primary;
-    const slug = override.slug ?? toSlug(name);
+    const slug = publishedSlug(station.id, slugs);
 
     // A context that restates the name tells the reader nothing - true whether
     // it comes from the raw name's own qualifier or from a nearest-town
@@ -111,7 +118,7 @@ export function createResolver({ corrections = new Map(), gazetteer = [], regist
 
     const aliases = new Set([
       name.toLowerCase(),
-      slug,
+      ...(slug ? [slug] : []),
       ...(override.aliases ?? []).filter((a) => typeof a === "string").map((a) => a.toLowerCase()),
     ]);
 
@@ -153,17 +160,17 @@ export function createResolver({ corrections = new Map(), gazetteer = [], regist
  * `undefined`, and rather than silently substituting a fallback position - a
  * registry station with no position is a real error to fix, not paper over.
  */
-function resolveOwned(id, owned) {
+function resolveOwned(id, owned, slugs) {
   const position = owned.position;
   if (!Array.isArray(position) || typeof position[0] !== "number" || typeof position[1] !== "number") {
     throw new Error(`registry station "${id}" has no valid position - run validateRegistry before resolving`);
   }
 
   const name = owned.name;
-  const slug = owned.slug ?? toSlug(name);
+  const slug = publishedSlug(id, slugs);
   const aliases = new Set([
     name.toLowerCase(),
-    slug,
+    ...(slug ? [slug] : []),
     ...(owned.aliases ?? []).filter((a) => typeof a === "string").map((a) => a.toLowerCase()),
   ]);
   const result = {
@@ -193,6 +200,29 @@ function resolveOwned(id, owned) {
   const tideReference = owned.tideReference ?? owned.derived?.reference;
   if (tideReference !== undefined) result.tideReference = tideReference;
   return result;
+}
+
+/**
+ * The station's published slug, or "" when it has none.
+ *
+ * `data/slugs.json` is the only source. A slug used to be derived here -
+ * `override.slug ?? toSlug(name)` - and that was a second, contradicting slug
+ * vocabulary: measured across the bundled catalogue it disagreed with the
+ * published table for 201 stations and, for 194 of those, handed back a slug
+ * published for a *different* station. `/tide/aberdeen` resolved from Aberdeen,
+ * Scotland while the table publishes that name to Aberdeen, Washington. An old
+ * share link then opens the wrong water, which is worse than a dead one: it
+ * looks right.
+ *
+ * So there is no derivation and no fallback. A station absent from the table
+ * has no published slug, and "" says exactly that - deriving one would rebuild
+ * the bug, because a derived name is exactly what the table has already handed
+ * to somebody else. The curated `slug:` in corrections.yaml / registry.yaml
+ * proposed a name at allocation; the table records what was allocated, and it
+ * is the record from then on.
+ */
+function publishedSlug(id, slugs) {
+  return slugs.get(id) ?? "";
 }
 
 /**

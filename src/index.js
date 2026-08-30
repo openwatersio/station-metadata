@@ -2,6 +2,7 @@ import { createResolver } from "./resolve.js";
 import corrections from "../data/corrections.json" with { type: "json" };
 import gazetteer from "../data/gazetteer.json" with { type: "json" };
 import registry from "../data/registry.json" with { type: "json" };
+import slugTable from "../data/slugs.json" with { type: "json" };
 
 export { createResolver, DERIVED_MAX_KM, RECOGNITION_KM } from "./resolve.js";
 export {
@@ -19,6 +20,25 @@ export { departures, DEPARTURE_LIMIT } from "./catalogue.js";
 export { buildSlugTable, emptyTable, readSlugTable, checkSlugTable } from "./slug-table.js";
 
 /**
+ * The published slug table, flattened to one id → slug map.
+ *
+ * Flat rather than per-kind because the resolver is handed a station, not a
+ * kind, and ids are unique across the two namespaces (kind namespaces *slugs*,
+ * not ids - two stations may share `dodd-narrows`, none share an id). Built
+ * once at module load and shared by both bundled resolvers.
+ *
+ * This is ~200 KB of JSON loading eagerly with the package root, and that is
+ * the price of one slug vocabulary: a consumer that routes `/tide/<slug>`
+ * cannot derive the name any more, so it needs this table whichever way it
+ * arrives. The data still kept out of reach is `places.json` (~890 KB) and the
+ * coastline, neither of which every consumer needs.
+ */
+const publishedSlugs = new Map([
+  ...Object.entries(slugTable.tide ?? {}),
+  ...Object.entries(slugTable.current ?? {}),
+]);
+
+/**
  * Build a resolver over the corrections and gazetteer this package ships.
  *
  * The data arrives as JSON import attributes rather than `readFileSync`, so
@@ -32,15 +52,18 @@ export { buildSlugTable, emptyTable, readSlugTable, checkSlugTable } from "./slu
  * a browser cannot read a file off disk, and every runtime can import JSON.
  * See `scripts/build-data.mjs`.
  *
- * All three files are a few KB and load eagerly with this module. The data kept
- * deliberately out of reach is the 3.6 MB coastline, which lives behind
- * ./audit.js and ./validate-positions.js and is never imported from here.
+ * Corrections, gazetteer and registry are a few KB each; the slug table is
+ * ~200 KB (see `publishedSlugs`). All four load eagerly with this module. The
+ * data kept deliberately out of reach is the 3.6 MB coastline, which lives
+ * behind ./audit.js and ./validate-positions.js and is never imported from
+ * here.
  */
 export function createBundledResolver() {
   return createResolver({
     corrections: new Map(Object.entries(corrections)),
     registry: new Map(Object.entries(registry)),
     gazetteer,
+    slugs: publishedSlugs,
   });
 }
 
@@ -68,5 +91,6 @@ export function createPlacesResolver(places) {
     corrections: new Map(Object.entries(corrections)),
     registry: new Map(Object.entries(registry)),
     gazetteer: places,
+    slugs: publishedSlugs,
   });
 }

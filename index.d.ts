@@ -69,6 +69,11 @@ export interface ResolvedStation {
   id: string;
   name: string;
   context: string;
+  /**
+   * The station's slug in `data/slugs.json`, or `""` when it has none. Never
+   * derived: a derived slug would contradict the published table and could be
+   * a name already published to a different station.
+   */
   slug: string;
   cities: string[];
   aliases: string[];
@@ -126,11 +131,18 @@ export const DERIVED_MAX_KM: number;
 /** Kilometres of closeness a place's size may outweigh, per decade of population above 1000. */
 export const RECOGNITION_KM: number;
 
-/** Build a resolver over your own corrections and gazetteer. */
+/**
+ * Build a resolver over your own corrections and gazetteer.
+ *
+ * `slugs` is a published allocation table flattened to id → slug, and it is
+ * the only source of `ResolvedStation.slug`. Pass none and every resolved
+ * station has `slug: ""`.
+ */
 export function createResolver(options?: {
   corrections?: Corrections;
   gazetteer?: GazetteerPlace[];
   registry?: Registry;
+  slugs?: Map<string, string>;
 }): Resolver;
 
 /** Parse a corrections YAML document into a map keyed by station ID. */
