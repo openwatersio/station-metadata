@@ -26,12 +26,36 @@ jobs:
       # sits out - it needs the provider's own list, which this repo does not
       # ship. Consumers that have one get it via `validate <stations.json>`.
       - run: node bin/station-metadata.mjs validate
-      # A slug is an API - slackwater-web routes /tide/<slug> straight off it.
-      # data/slugs.lock.json pins the slug this repo last shipped for each
-      # station; this fails the moment one changes without the old value
-      # recorded in that station's formerSlugs, so a breaking rename cannot
-      # merge unrecorded. Regenerate deliberately with `station-metadata slugs`.
-      - run: node bin/station-metadata.mjs check-slugs
+      - name: Check no published slug moved since the last release
+        run: |
+          # The prior record must be one this commit cannot edit. Comparing the
+          # working tree against itself proves nothing once the table is an
+          # input rather than a derivation.
+          git fetch --tags --quiet
+          PREV=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -z "$PREV" ]; then echo "no previous tag; skipping"; exit 0; fi
+          git show "$PREV:data/slugs.json" > /tmp/previous-slugs.json 2>/dev/null || {
+            echo "no slug table at $PREV; skipping"; exit 0; }
+          node -e '
+            const { checkSlugTable } = await import("./src/slug-table.js");
+            const fs = await import("node:fs");
+            const prev = JSON.parse(fs.readFileSync("/tmp/previous-slugs.json", "utf8"));
+            const now = JSON.parse(fs.readFileSync("data/slugs.json", "utf8"));
+            // Not written yet at this point in the migration - the next task
+            // creates it. Empty is the correct default: no station has been
+            // accepted as a departure yet, so nothing should be excused.
+            let tombstones = { tide: {}, current: {} };
+            try {
+              tombstones = JSON.parse(fs.readFileSync("data/slug-tombstones.json", "utf8"));
+            } catch (err) {
+              if (err.code !== "ENOENT") throw err;
+            }
+            const problems = checkSlugTable(prev, now, tombstones);
+            if (problems.length) { for (const p of problems) console.error("  " + p); process.exit(1); }
+            console.log("no published slug moved since " + process.env.PREV);
+          ' --input-type=module
+        env:
+          PREV: ${{ github.sha }}
       # data/corrections.json is compiled from the YAML and committed, because
       # browsers cannot read the YAML off disk. A PR that edits the YAML and
       # not the artifact would ship them out of step - this catches that.

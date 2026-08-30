@@ -9,7 +9,8 @@
     "test:types": "tsc -p tsconfig.json",
     "build:data": "node scripts/build-data.mjs",
     "check:data": "npm run build:data && git diff --exit-code data/corrections.json data/registry.json",
-    "build:places": "node scripts/build-places.mjs"
+    "build:places": "node scripts/build-places.mjs",
+    "check:slugs": "node bin/station-metadata.mjs check-slugs --tides \"$NOAA_TIDES\" --tides \"$CHS_TIDES\" --currents \"$NOAA_CURRENTS\" --currents \"$CHS_GATES\""
   },
   "repository": {
     "type": "git",
