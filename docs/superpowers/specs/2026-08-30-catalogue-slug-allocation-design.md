@@ -8,14 +8,14 @@ slugs unchanged. This is the next chapter, not a contradiction of it.
 
 ## Objective
 
-Publish one slug per station for the whole bundled catalogue, not just the 37
-curated entries, and make a published slug permanent.
+Publish one slug per station for the whole bundled catalogue — 4,687 stations,
+not just the 37 curated entries — and make a published slug permanent.
 
-Today `slugs.lock.json` covers the curated set. The ~2,271 bundled NOAA tide and
-current stations get their slugs from a name-slugify plus an order-dependent
-collision ladder that lives only in the deprecated PWA's TypeScript. Swift cannot
-reach it and a Worker would be a third implementation. That gap is what blocks
-station pages.
+Today `slugs.lock.json` covers the curated 37. The bundled catalogue — **4,687
+stations**: 2,765 NOAA tide, 842 NOAA current, 1,058 CHS and 22 CHS current gates
+— gets its slugs from a name-slugify plus an order-dependent collision ladder
+that lives only in the deprecated PWA's TypeScript. Swift cannot reach it and a
+Worker would be a third implementation. That gap is what blocks station pages.
 
 ## Why the lock is not merely extended
 
@@ -92,12 +92,34 @@ depend on catalogue order.
 2. **If the base is free within the kind, take it.** When several new stations
    want the same base, **the lowest station id takes it** and the rest continue
    to rung 3. Explicit, because "ties broken by id" did not say who won.
-3. **Qualifier:** `${base}-${toSlug(qualifier)}`, using the qualifier the
-   provider publishes (for example `point-wilson-2-7-mi-ne-of`). If a station has
-   **no qualifier**, or the qualifier slugifies to empty, skip to rung 4. If two
-   stations produce the same qualified slug, the lowest id takes it and the rest
-   continue to rung 4.
+3. **Region:** `${base}-${toSlug(region)}`. If a station has **no region**, or
+   the region slugifies to empty, skip to rung 4. If two stations produce the
+   same regional slug, the lowest id takes it and the rest continue to rung 4.
 4. **Id:** `${base}-${toSlug(id)}`. Unique by definition, and terminal.
+
+### Why `region`, and how far it gets
+
+An earlier draft folded in "the qualifier the provider publishes". **No such field
+exists.** Every bundled station carries `id, name, region, aliases, latitude,
+longitude, timezone` plus its kind-specific fields, and nothing else. NOAA bakes
+the distance and bearing into the *name* — "4.3 nm NE of Point Brazil" — so
+`toSlug(name)` already produces the qualified form and the remaining
+disambiguator is `region`, present on 100% of stations.
+
+Measured against the bundled catalogue rather than assumed:
+
+| kind | stations | base-slug collisions | still colliding after `region` |
+|---|---|---|---|
+| tide | 2,765 | 65 slugs / 137 stations | **4 slugs / 8 stations** |
+| current | 842 | 64 slugs / 149 stations | **0** |
+
+So rung 4 exists for eight tide stations. It is not dead code — `aberdeen` is
+Washington and Scotland, `albany` is New York and Western Australia — but it is
+rare enough that its output being ugly is acceptable, which is what justifies
+appending an id at all.
+
+That the residuals are Scotland and Western Australia is also a reminder that this
+catalogue is global, not regional.
 
 **The id must go through `toSlug`.** Station ids contain `:` and `/` —
 `current:noaa/PUG1515` appended raw yields `seattle-current:noaa/PUG1515`, which
@@ -215,8 +237,8 @@ So the artifact records what it was built from:
 ```json
 {
   "catalogue": {
-    "tides":    { "digest": "sha256:…", "stations": 2043 },
-    "currents": { "digest": "sha256:…", "stations": 856 }
+    "tides":    { "digest": "sha256-…", "stations": 2043 },
+    "currents": { "digest": "sha256-…", "stations": 856 }
   },
   "tide":    { "noaa/9447130": "seattle" },
   "current": { "current:noaa/PUG1515": "deception-pass" }
@@ -268,7 +290,8 @@ directly, so a minor would understate it even though the curated 37 are untouche
 - Rung 4 passes the station id through `toSlug`: an allocated slug always matches
   `^[a-z0-9-]+$`, asserted against an id containing `:` and `/`
 - Where several new stations share a base, the lowest station id receives it
-- A station with no qualifier skips rung 3 and allocates at rung 4
+- A station with no region skips rung 3 and allocates at rung 4
+- The eight known tide collisions that survive `region` each allocate distinctly
 - The artifact contains no wall-clock field: two builds from one catalogue are
   byte-identical
 
