@@ -40,6 +40,17 @@ that the slug is the record and the name is free to change.**
 - A slug moves only when someone edits the lock by hand and records the old value
   in `formerSlugs`. `checkSlugs` therefore guards against manual moves rather
   than derivation drift.
+- **It needs an immutable prior record to do that.** Once the lock is an input
+  rather than a derivation, comparing it against the data it produced proves
+  nothing: an edit that changes the lock and the generated artifact together is
+  self-consistent and undetectable. The prior record is **git** — the lock as of
+  the last release tag, read with `git show <tag>:data/slugs.lock.json`. CI
+  compares the working tree against that, so the old value always exists and
+  cannot be edited in the same commit as the change it is meant to catch.
+- `formerSlugs` keeps its existing shape: a per-record array of strings, each
+  matching `^[a-z0-9-]+$`, already validated at `src/registry.js:127`. Kind
+  scoping is implicit — the array lives on a record that has a kind, and a former
+  slug is only ever consulted within that kind's namespace.
 - The file's embedded note — "a build artifact, not hand-edited input" — becomes
   false and is rewritten. It also still says `station-corrections`, stale since
   the rename.
@@ -70,18 +81,41 @@ URLs like `/currents/point-wilson-current`.
 
 ## Allocation
 
-For a station with no slug in the lock:
+Stations already in the lock skip all of this and keep what they hold. What
+follows applies only to stations with no slug.
 
-1. **Base:** `toSlug(name)`, the existing function.
-2. **On collision within the kind:** fold in the qualifier the provider already
-   publishes (for example `point-wilson-2-7-mi-ne-of`).
-3. **On collision still:** append the station id, which is unique by definition.
+Candidates are processed **sorted by station id**, ascending, byte-wise. That
+sort is the whole of the determinism: it is intrinsic to the station and does not
+depend on catalogue order.
 
-Ties are broken by station id, never by iteration order. Allocating the same
-catalogue twice in any order produces the same table — the order-dependence that
-produced the PWA's local `FORMER_SLUGS` constant does not survive this.
+1. **Base:** `toSlug(name)`.
+2. **If the base is free within the kind, take it.** When several new stations
+   want the same base, **the lowest station id takes it** and the rest continue
+   to rung 3. Explicit, because "ties broken by id" did not say who won.
+3. **Qualifier:** `${base}-${toSlug(qualifier)}`, using the qualifier the
+   provider publishes (for example `point-wilson-2-7-mi-ne-of`). If a station has
+   **no qualifier**, or the qualifier slugifies to empty, skip to rung 4. If two
+   stations produce the same qualified slug, the lowest id takes it and the rest
+   continue to rung 4.
+4. **Id:** `${base}-${toSlug(id)}`. Unique by definition, and terminal.
 
-Stations already in the lock skip all of it and keep what they hold.
+**The id must go through `toSlug`.** Station ids contain `:` and `/` —
+`current:noaa/PUG1515` appended raw yields `seattle-current:noaa/PUG1515`, which
+fails the `^[a-z0-9-]+$` check at `src/registry.js:210`. Through `toSlug` it
+becomes `current-noaa-pug1515`. This is the difference between a working rung and
+one that produces slugs the package's own validator rejects.
+
+### The scope of the determinism guarantee
+
+Order-independence holds **within a single allocation batch**: shuffling the
+catalogue produces an identical table.
+
+Across incremental runs the result is **history-dependent, by design**. Allocating
+A then B does not necessarily equal allocating B then A, because whoever arrives
+first holds the base slug forever. That is the point — it is what makes a
+published slug permanent — but it means the table cannot be reproduced from the
+current catalogue alone. The lock is the record, and it is not regenerable from
+scratch once anything is published.
 
 ## Tombstones: a slug is never reused
 
@@ -95,9 +129,15 @@ page. A dead link is a non-event. A link that confidently shows Deception Pass t
 someone who asked for Dodd Narrows is a safety-shaped bug for anyone timing a
 transit.
 
-So a departed station's entry is **retained and marked as a tombstone**, never
-reallocated. `slackwater-ios` already carries `chs-tombstones.json`; the pattern
-exists in this ecosystem.
+So a departed station's slug is **retained and never reallocated** — moved to a
+sibling `data/slug-tombstones.json` rather than marked inline. `slackwater-ios`
+already carries `chs-tombstones.json`; the pattern exists in this ecosystem.
+
+A sibling file rather than an inline marker because `slugs.json` guarantees it
+covers *exactly* the catalogue it was generated against, and a tombstone is by
+definition a station no longer in that catalogue. Inline tombstones would make
+that guarantee false, and a consumer iterating live stations would have to know
+to filter. Two files, two honest guarantees.
 
 Consumers may serve a tombstoned slug as "this station is no longer published"
 rather than a bare 404. That is their choice; this package's obligation is only
@@ -105,8 +145,31 @@ never to hand the name to a different station.
 
 ## Generation and CI
 
-The catalogue arrives as **CLI input at generation time** — the CLI already
-accepts a stations file — and the result is committed as a generated artifact.
+### The catalogue argument is mandatory
+
+Today the CLI takes `[stations.json]` — optional. Under allocation semantics that
+is a data-destroying default. **A station absent from the input is
+indistinguishable from a station that has departed**, so an accidental partial
+run — a truncated file, one kind's catalogue instead of both, a forgotten
+argument — reads as hundreds of departures and tombstones live stations.
+Tombstones are permanent. The mistake is not recoverable by re-running.
+
+So `station-metadata slugs` **requires an explicit catalogue path for every
+kind** and refuses to run otherwise. Before mutating anything it validates the
+input's identity — recording each catalogue's digest and station count, and
+comparing them against what the lock was last built from.
+
+And it **refuses on implausible departure**: if more than a small number of
+stations present in the lock are absent from the input, the run aborts and
+requires an explicit acknowledgement naming the expected count. Real departures
+are rare and individually reviewable; mass departure is a bad argument, and the
+cost of being wrong is asymmetric — a blocked run is a minor annoyance, an
+erroneous tombstone is permanent.
+
+### Generation
+
+The catalogue arrives as **CLI input at generation time** and the result is
+committed as a generated artifact.
 This matches the existing `build:data` / `check:data` pattern, where
 `corrections.json` and `registry.json` are regenerated and diffed in CI.
 
@@ -151,12 +214,27 @@ So the artifact records what it was built from:
 
 ```json
 {
-  "generated": "2026-08-30",
-  "catalogue": { "currents": "…", "tides": "…" },
-  "tide": { },
-  "current": { }
+  "catalogue": {
+    "tides":    { "digest": "sha256:…", "stations": 2043 },
+    "currents": { "digest": "sha256:…", "stations": 856 }
+  },
+  "tide":    { "noaa/9447130": "seattle" },
+  "current": { "current:noaa/PUG1515": "deception-pass" }
 }
 ```
+
+**No wall-clock `generated` field.** `slugs-lock.js:40` writes
+`new Date().toISOString()` today, which is fine while nothing diffs the file —
+`check:data` covers only `corrections.json` and `registry.json`. The moment CI
+diffs a rebuild, a date makes it fail every day for no reason. The catalogue
+digests carry the same "what was this built from" information and are
+reproducible. The existing date in `slugs.lock.json` goes too, since this change
+rewrites that file anyway.
+
+The full published schema is: live slugs per kind in `slugs.json`, catalogue
+digests alongside them, departed slugs in `slug-tombstones.json`, and
+`formerSlugs` on the station records where it already lives. Those four are what
+a consumer needs to resolve a slug, serve a redirect, and refuse a reused name.
 
 Consumers compare that against the catalogue release they bundle and fail loudly
 on a mismatch rather than silently treating an absent row as "no such station".
@@ -183,7 +261,16 @@ directly, so a minor would understate it even though the curated 37 are untouche
 - A departed station's slug is tombstoned, and a new station colliding with a
   tombstone does not receive it
 - The curated 37 are byte-identical before and after the first full allocation
-- `checkSlugs` fails on a hand-moved slug with no `formerSlugs` entry
+- `checkSlugs` fails on a hand-moved slug with no `formerSlugs` entry, compared
+  against the lock at the previous release tag rather than against regenerated data
+- `slugs` refuses to run with no catalogue argument, with one kind's catalogue
+  missing, and when departures exceed the plausibility threshold
+- Rung 4 passes the station id through `toSlug`: an allocated slug always matches
+  `^[a-z0-9-]+$`, asserted against an id containing `:` and `/`
+- Where several new stations share a base, the lowest station id receives it
+- A station with no qualifier skips rung 3 and allocates at rung 4
+- The artifact contains no wall-clock field: two builds from one catalogue are
+  byte-identical
 
 ## Risks
 
@@ -199,8 +286,11 @@ directly, so a minor would understate it even though the curated 37 are untouche
 
 ## Open items
 
-- Tombstone representation: a reserved marker inside `slugs.json`, or a sibling
-  file mirroring `chs-tombstones.json`. Either satisfies the never-reuse rule.
-- Whether `station-metadata slugs` should refuse to run without an explicit
-  catalogue argument, so a partial catalogue cannot quietly allocate a partial
-  table.
+Both items previously open here were settled in review: tombstones go to a
+sibling file, and the catalogue argument is mandatory. See those sections.
+
+One residual, for implementation rather than design: the departure threshold that
+aborts a run. It wants to be low enough to catch a truncated catalogue and high
+enough not to block a genuine provider cull. A fixed small count is probably
+right; a percentage of the lock is not, since it scales with the thing it is
+meant to protect.
