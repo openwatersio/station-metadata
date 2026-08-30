@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const cli = fileURLToPath(new URL("../bin/station-metadata.mjs", import.meta.url));
@@ -14,6 +14,18 @@ function run(args) {
     return { code: 0, out: execFileSync(process.execPath, [cli, ...args], { encoding: "utf8" }) };
   } catch (err) {
     return { code: err.status, out: `${err.stdout ?? ""}${err.stderr ?? ""}` };
+  }
+}
+
+function snapshot(path) {
+  return existsSync(path) ? readFileSync(path) : undefined;
+}
+
+function restore(path, before) {
+  if (before === undefined) {
+    if (existsSync(path)) unlinkSync(path);
+  } else {
+    writeFileSync(path, before);
   }
 }
 
@@ -50,6 +62,8 @@ test(
       "--currents",
       `${resources}/chs-current-gates.json`,
     ];
+    const slugsBefore = snapshot(slugsPath);
+    const tombstonesBefore = snapshot(tombstonesPath);
     try {
       const { code, out } = run(args);
       assert.equal(code, 0, out);
@@ -59,10 +73,14 @@ test(
         assert.ok(!(id in table.tide), `${id} should not be in the tide table`);
       }
     } finally {
-      // These artifacts are the next task's to produce; this test must not
-      // leave them behind for git to notice.
-      if (existsSync(slugsPath)) unlinkSync(slugsPath);
-      if (existsSync(tombstonesPath)) unlinkSync(tombstonesPath);
+      // This drives the real CLI, which writes to the package's real data
+      // paths - the same ones the shipped table lives at once allocated. So
+      // it must leave them exactly as it found them: restore whatever was
+      // there before, and only delete a file that did not exist beforehand.
+      // Deleting unconditionally was safe only while these paths were
+      // untracked; they are committed data now.
+      restore(slugsPath, slugsBefore);
+      restore(tombstonesPath, tombstonesBefore);
     }
   },
 );
