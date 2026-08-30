@@ -69,6 +69,11 @@ export interface ResolvedStation {
   id: string;
   name: string;
   context: string;
+  /**
+   * The station's slug in `data/slugs.json`, or `""` when it has none. Never
+   * derived: a derived slug would contradict the published table and could be
+   * a name already published to a different station.
+   */
   slug: string;
   cities: string[];
   aliases: string[];
@@ -126,11 +131,18 @@ export const DERIVED_MAX_KM: number;
 /** Kilometres of closeness a place's size may outweigh, per decade of population above 1000. */
 export const RECOGNITION_KM: number;
 
-/** Build a resolver over your own corrections and gazetteer. */
+/**
+ * Build a resolver over your own corrections and gazetteer.
+ *
+ * `slugs` is a published allocation table flattened to id → slug, and it is
+ * the only source of `ResolvedStation.slug`. Pass none and every resolved
+ * station has `slug: ""`.
+ */
 export function createResolver(options?: {
   corrections?: Corrections;
   gazetteer?: GazetteerPlace[];
   registry?: Registry;
+  slugs?: Map<string, string>;
 }): Resolver;
 
 /** Parse a corrections YAML document into a map keyed by station ID. */
@@ -157,6 +169,26 @@ export function cleanName(raw: string): string;
 
 /** Derive a URL slug from a display name. */
 export function toSlug(name: string): string;
+
+/** A station to be allocated a slug. */
+export interface CatalogueStation {
+  id: string;
+  name?: string;
+  region?: string;
+}
+
+/** Allocate a slug for every station that does not already have one. */
+export function allocateSlugs(input: {
+  stations: CatalogueStation[];
+  existing: Map<string, string>;
+  taken: Set<string>;
+}): Map<string, string>;
+
+/** Ids allocated previously and absent from the catalogue now. */
+export function departures(previousIds: Iterable<string>, catalogueIds: Iterable<string>): string[];
+
+/** The number of departures above which a run must stop and ask. */
+export const DEPARTURE_LIMIT: number;
 
 /** One station's pinned position and audit verdict. */
 export interface LockEntry {
@@ -290,22 +322,29 @@ export function validateRegistry(
   options?: { corrections?: Corrections },
 ): string[];
 
-/** Current slug per station id, as pinned by `station-metadata slugs`. */
-export interface SlugsLock {
-  note: string;
-  generated: string;
-  slugs: Record<string, string>;
+/** The slug allocation record, partitioned by kind. Kind is a URL namespace: the same slug may appear in both. */
+export interface SlugTable {
+  catalogue: Record<string, { digest: string; stations: number }>;
+  tide: Record<string, string>;
+  current: Record<string, string>;
 }
 
-/** Build the slugs lock from the current corrections and registry data. */
-export function buildSlugsLock(corrections: Corrections, registry: Registry): SlugsLock;
+/** A departed station's slug, retained per kind rather than freed, so an old link never resolves to a different station. */
+export type Tombstones = { tide: Record<string, string>; current: Record<string, string> };
 
-/** Parse a slugs lock from its on-disk JSON string. */
-export function readSlugsLock(json: string): SlugsLock;
+/** An empty table, for a first run or a caller with nothing on disk. */
+export function emptyTable(): SlugTable;
 
-/**
- * Check a slugs lock against the current corrections and registry data.
- * Fails when a station's slug differs from the lock and the lock's value is
- * not recorded in that station's `formerSlugs`.
- */
-export function checkSlugs(lock: SlugsLock, corrections: Corrections, registry: Registry): string[];
+/** Parse a table from its on-disk JSON. */
+export function readSlugTable(json: string): SlugTable;
+
+/** Build the table from the previous one and the current catalogues. Preserves every previous allocation. */
+export function buildSlugTable(input: {
+  previous: SlugTable;
+  tombstones: Tombstones;
+  reserved: { tide: Set<string>; current: Set<string> };
+  catalogues: Record<string, { stations: CatalogueStation[]; digest: string }>;
+}): { table: SlugTable; tombstones: Tombstones; gone: string[] };
+
+/** Compare a table against an immutable prior one. Returns human-readable problems; empty means clean. */
+export function checkSlugTable(previous: SlugTable, current: SlugTable, tombstones: Tombstones): string[];

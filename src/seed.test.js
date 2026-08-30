@@ -10,7 +10,11 @@ const read = (name) =>
 
 const corrections = loadCorrections(read("corrections.yaml"));
 const gazetteer = JSON.parse(read("gazetteer.json"));
-const resolve = createResolver({ corrections, gazetteer });
+// A resolved slug comes from the published table and nowhere else, so a
+// resolver built without it answers "" for every station.
+const slugTable = JSON.parse(read("slugs.json"));
+const slugs = new Map([...Object.entries(slugTable.tide), ...Object.entries(slugTable.current)]);
+const resolve = createResolver({ corrections, gazetteer, slugs });
 
 // Stations that arrive with no context of their own. IDs and coordinates were
 // derived from slackwater-web's bundled station data, not written by hand -

@@ -12,7 +12,11 @@ const read = (name) =>
 
 const registry = loadRegistry(read("registry.yaml"));
 const corrections = loadCorrections(read("corrections.yaml"));
-const resolve = createResolver({ registry, corrections });
+// A resolved slug comes from the published table and nowhere else, so a
+// resolver built without it answers "" for every station.
+const slugTable = JSON.parse(read("slugs.json"));
+const slugs = new Map([...Object.entries(slugTable.tide), ...Object.entries(slugTable.current)]);
+const resolve = createResolver({ registry, corrections, slugs });
 
 test("the shipped registry is valid against the shipped corrections", () => {
   assert.deepEqual(validateRegistry(registry, { corrections }), []);

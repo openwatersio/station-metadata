@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createResolver } from "./resolve.js";
+import { createBundledResolver } from "./index.js";
 import { loadCorrections } from "./corrections.js";
 
 const corrections = loadCorrections(`
@@ -22,7 +25,15 @@ const gazetteer = [
   { name: "Everett", region: "WA", latitude: 47.979, longitude: -122.202 },
 ];
 
-const resolve = createResolver({ corrections, gazetteer });
+// The published allocation table, id -> slug. It is the only source of a
+// resolved slug: nothing is derived from a name any more.
+const slugs = new Map([
+  ["noaa/9447659", "everett"],
+  ["noaa/1", "cherry-point"],
+  ["noaa/4", "everett-marina"],
+]);
+
+const resolve = createResolver({ corrections, gazetteer, slugs });
 
 test("a curated override wins outright", () => {
   const r = resolve({ id: "noaa/9447659", name: "Everett", latitude: 47.98, longitude: -122.223 });
@@ -39,7 +50,7 @@ test("a corrected position replaces the published one", () => {
   assert.equal(r.corrected, true);
 });
 
-test("an uncorrected station still gets a cleaned name and a slug", () => {
+test("an uncorrected station gets a cleaned name and its published slug", () => {
   const r = resolve({ id: "noaa/1", name: "CHERRY POINT", latitude: 48.863, longitude: -122.759 });
   assert.equal(r.name, "Cherry Point");
   assert.equal(r.slug, "cherry-point");
@@ -297,7 +308,12 @@ const registry = new Map([
     aliases: ["dodd"],
   }],
 ]);
-const withRegistry = createResolver({ corrections, gazetteer, registry });
+const withRegistry = createResolver({
+  corrections,
+  gazetteer,
+  registry,
+  slugs: new Map([["chs-dodd-narrows", "dodd-narrows"]]),
+});
 
 test("a registry station resolves from its id alone", () => {
   const r = withRegistry({ id: "chs-dodd-narrows" });
@@ -418,3 +434,74 @@ test("a derived gate resolves with tideReference set to its derived reference", 
   const r = createResolver({ registry: dr })({ id: "chs-malibu" });
   assert.equal(r.tideReference, "chs-pa");
 });
+
+// --- The slug comes from the published table, and only from there ----------
+
+test("the published table outranks a correction's own slug", () => {
+  // A curated `slug:` proposed a name at allocation; `data/slugs.json` records
+  // what was allocated. If the two ever disagree the table wins, because it is
+  // what every published URL was minted from.
+  const r = createResolver({
+    corrections,
+    gazetteer,
+    slugs: new Map([["noaa/9447659", "everett-port-gardner"]]),
+  })({ id: "noaa/9447659", name: "Everett", latitude: 47.98, longitude: -122.223 });
+  assert.equal(r.slug, "everett-port-gardner");
+});
+
+test("a station with no published slug gets an empty one, never a derived one", () => {
+  // The regression this guards: deriving `toSlug(name)` here handed back names
+  // the table has already published to *other* stations - 194 of them across
+  // the bundled catalogue. An empty slug is a station with no page; a borrowed
+  // one is a link that opens the wrong water.
+  const r = resolve({ id: "noaa/999", name: "Aberdeen", latitude: 46.9, longitude: -123.8 });
+  assert.equal(r.slug, "");
+  assert.deepEqual(r.aliases, ["aberdeen"]);
+});
+
+test("a registry station with no published slug gets an empty one too", () => {
+  const r = createResolver({
+    registry: new Map([["chs-x", { name: "Dodd Narrows", position: [49.13, -123.81], provider: "chs" }]]),
+  })({ id: "chs-x" });
+  assert.equal(r.slug, "");
+  assert.deepEqual(r.aliases, ["dodd narrows"]);
+});
+
+const resources = process.env.RESOURCES;
+test(
+  "no station resolves to a slug published for a different station",
+  { skip: resources ? false : "RESOURCES env var not set - skipping catalogue-backed test" },
+  () => {
+    // The whole catalogue, not a sample: a one-station check passed for years
+    // while the resolver contradicted the table for 201 stations and handed
+    // back another station's published slug for 194 of them.
+    const table = JSON.parse(readFileSync(fileURLToPath(new URL("../data/slugs.json", import.meta.url)), "utf8"));
+    const load = (name) => JSON.parse(readFileSync(`${resources}/${name}`, "utf8"));
+    const catalogue = {
+      tide: [...load("stations.json"), ...load("chs-stations.json")],
+      current: [...load("currents.json"), ...load("chs-current-gates.json")],
+    };
+    const resolveBundled = createBundledResolver();
+
+    const contradictions = [];
+    const stolen = [];
+    let checked = 0;
+    for (const kind of ["tide", "current"]) {
+      const owner = new Map(Object.entries(table[kind]).map(([id, slug]) => [slug, id]));
+      for (const station of catalogue[kind]) {
+        checked++;
+        const { slug } = resolveBundled(station);
+        const published = table[kind][station.id];
+        if (slug !== published) contradictions.push(`${kind}/${station.id}: resolve "${slug}" vs table "${published}"`);
+        const holder = owner.get(slug);
+        if (slug && holder !== undefined && holder !== station.id) {
+          stolen.push(`${kind}/${station.id} "${station.name}": resolve "${slug}", published for ${holder}`);
+        }
+      }
+    }
+
+    assert.ok(checked > 4000, `expected the whole catalogue, resolved only ${checked} stations`);
+    assert.deepEqual(stolen.slice(0, 5), [], `${stolen.length} station(s) resolve to another station's published slug`);
+    assert.deepEqual(contradictions.slice(0, 5), [], `${contradictions.length} station(s) contradict data/slugs.json`);
+  },
+);

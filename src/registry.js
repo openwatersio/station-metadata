@@ -211,9 +211,10 @@ export function validateRegistry(registry, { corrections = new Map() } = {}) {
       problems.push(`${id}: slug "${record.slug}" must be lowercase letters, digits and hyphens`);
     }
 
-    // ponytail: resolve.js derives a routable slug (override.slug ?? toSlug(name))
-    // whenever a record sets none, so an unset slug still ends up live and must
-    // be guarded the same as an explicit one. Only compute it when there's a
+    // ponytail: a record that sets no slug still proposes one - allocation
+    // falls back to toSlug(name) (see allocate.js), and what it allocates is
+    // published permanently - so an unset slug must be guarded for collisions
+    // the same as an explicit one. Only compute it when there's a
     // usable name (or an explicit slug already) - a record failing the
     // required-name check has no real name to derive from, and toSlug("undefined")
     // would register a bogus collision target for a problem already reported above.

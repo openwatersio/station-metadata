@@ -34,8 +34,10 @@ same overlay, so tides, currents and both countries share one vocabulary.
 TypeScript declarations ship with the package — no ambient declaration needed.
 
 **Runs in the browser.** `createBundledResolver` imports its data as JSON rather than reading
-files, so it needs no filesystem and works unchanged in a bundle. It weighs about 7 KB bundled;
-the `yaml` parser tree-shakes away unless you call `loadCorrections` yourself.
+files, so it needs no filesystem and works unchanged in a bundle. The corrections, gazetteer and
+registry are about 7 KB bundled; the published slug table (`data/slugs.json`, 207 KB raw, ~55 KB
+gzipped) loads with them, because a resolved slug is read from that table and never derived. The
+`yaml` parser tree-shakes away unless you call `loadCorrections` yourself.
 
 To resolve against your own corrections or gazetteer instead of the bundled ones, use
 `createResolver({ corrections, gazetteer })` directly with `loadCorrections`. Advanced consumers
@@ -99,10 +101,10 @@ noaa/9442396:
 | Field | Meaning |
 |---|---|
 | `name` / `context` | The two-line display. Context is whatever most usefully distinguishes the place — a water body, island group, region, county, or characteristic. |
-| `slug` | Canonical URL segment. Lives here so a name fix and its URL move together. |
+| `slug` | The name proposed for the URL segment at allocation time. Not the published slug: `data/slugs.json` records what was allocated, and that table is what `resolve()` returns and what every URL is minted from. See [Allocating slugs](#allocating-slugs). |
 | `cities` | Nearest settlements, for search. Not for display. |
 | `aliases` | What someone might type. Local names, former names, misspellings. |
-| `formerSlugs` | Slugs this station used to resolve to. A slug is an API — this is how a consumer builds a redirect map for links shared under the old one. See [Pinning slugs with a lock](#pinning-slugs-with-a-lock). |
+| `formerSlugs` | Slugs this station used to resolve to. A slug is an API — this is how a consumer builds a redirect map for links shared under the old one. See [Allocating slugs](#allocating-slugs). |
 | `position` | A corrected `[lat, lon]`. Requires `reason`. |
 | `positionVerified` | A reason the published position is *right* despite reading inland. Mutually exclusive with `position`. Passed straight through to the resolved object when set, and omitted from it otherwise. |
 
@@ -246,26 +248,48 @@ too — that's a data change worth reviewing, not a false alarm. `audit` reuses 
 for any station whose resolved position and the lock's coastline/threshold all still match,
 reporting how many were cached versus freshly checked.
 
-## Pinning slugs with a lock
+## Allocating slugs
 
 ```bash
-npx station-metadata slugs        # writes data/slugs.lock.json
-npx station-metadata check-slugs  # exit 1 if a slug moved without being recorded
+# every catalogue file, for both kinds; both flags repeat
+npx station-metadata slugs \
+  --tides noaa-tides.json --tides chs-stations.json \
+  --currents noaa-currents.json --currents chs-current-gates.json
+# writes data/slugs.json and data/slug-tombstones.json
+
+npm run check:slugs   # exit 1 if a published slug vanished without a tombstone
 ```
 
-A slug is an API: it goes straight into a shareable URL (`slackwater-web` routes `/tide/<slug>`),
-so changing one silently is a breaking change shipped as a patch. `data/slugs.lock.json` pins the
-current slug per station; CI cannot tell a slug *changed* without knowing the previous value.
-`check-slugs` fails when a station's slug differs from the lock and the old value is not in that
-station's `formerSlugs` — and separately, `validate` already rejects a new slug that collides with
-another station's current slug **or** its `formerSlugs` (a recycled slug would silently redirect
-old links to the wrong station, worse than a 404), plus a malformed `formerSlugs` entry. Move a
-slug and record its old value in `formerSlugs` in the same change, then regenerate the lock.
+A slug is an API: it goes straight into a shareable URL (`/tide/<slug>`), so a slug that moves
+breaks every link already shared under it, and a slug handed to a *different* station is worse —
+the old link resolves to the wrong water, confidently and with no error state.
 
-One judgment no check can make: only record a former slug when the new slug points at the **same
-place**. A genuine rename qualifies; a mislabel does not — redirecting a mislabelled slug preserves
-a wrong link, where a 404 is the more honest outcome. A downstream consumer owns the redirect
-either way.
+So a name proposes a slug exactly once, at allocation, and `data/slugs.json` is the record from
+then on. `slugs` is incremental: every entry in the committed table is preserved verbatim and
+only stations with no slug are allocated, sorted by station id so the result does not depend on
+catalogue order. `resolve()` reads its `slug` straight out of that table — a station with no row
+resolves to `slug: ""` rather than a derived name, because a derived name is exactly what the
+table may have already published to somebody else.
+
+**Both kinds are mandatory, and every file for each.** A station absent from the input is
+indistinguishable from a station that has departed, and a departure is permanent: its slug moves
+into `data/slug-tombstones.json` and is never handed to another station. A forgotten `--tides`
+argument would read as thousands of departures. The command refuses to run without both flags,
+and refuses a run where more stations departed than the plausibility limit unless you pass
+`--accept-departures`. A station that later reappears reclaims its tombstoned slug.
+
+`check:slugs` rebuilds the table from the committed one and the same catalogue files, and fails
+when a station in the committed table is missing from the rebuild without a matching tombstone.
+It cannot detect a *moved* slug, and does not claim to: the committed table is its input, and a
+commit that edits the table and the data together is self-consistent. Move detection needs a
+prior table this commit cannot edit, which is why CI compares `data/slugs.json` against the copy
+at the previous release tag (`.github/workflows/ci.yml`). Two checks, two different prior records.
+
+`validate` covers the hand-curated side: it rejects a slug that collides with another station's
+slug **or** with any `formerSlugs` entry, and a malformed `formerSlugs`. One judgment no check can
+make: only record a former slug when the new slug points at the **same place**. A genuine rename
+qualifies; a mislabel does not — redirecting a mislabelled slug preserves a wrong link, where a
+404 is the more honest outcome. A downstream consumer owns the redirect either way.
 
 ## Contributing a correction
 
@@ -275,8 +299,8 @@ data without a filesystem. CI fails if the two are out of step.
 
 Corrections are pull requests, and CI checks them mechanically: schema validity, `reason`
 present whenever `position` is, unique slugs (current and former), no context that restates its
-name, that a corrected `position` actually lands in water against the bundled coastline, and
-(`check-slugs`) that a moved slug was recorded in `formerSlugs`.
+name, that a corrected `position` actually lands in water against the bundled coastline, and that
+no slug published in `data/slugs.json` has moved since the last release.
 
 Pass a stations file — `station-metadata validate stations.json` — and one more check runs:
 that a corrected position is within **5 km** of the one the provider published. A correction is

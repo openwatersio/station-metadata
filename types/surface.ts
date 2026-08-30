@@ -24,9 +24,10 @@ import {
   currentGates,
   loadRegistry,
   validateRegistry,
-  buildSlugsLock,
-  readSlugsLock,
-  checkSlugs,
+  buildSlugTable,
+  emptyTable,
+  readSlugTable,
+  checkSlugTable,
   type Station,
   type ResolvedStation,
   type Resolver,
@@ -35,7 +36,7 @@ import {
   type Lock,
   type Registry,
   type RegistryStation,
-  type SlugsLock,
+  type SlugTable,
 } from "../index.js";
 import { validatePositions, coverageWarnings } from "../validate-positions.js";
 import { classify } from "../src/audit.js";
@@ -127,9 +128,17 @@ const registryPositionProblems: string[] = validatePositions(reg);
 const correctionsCoverage: string[] = coverageWarnings(corrections);
 const registryCoverage: string[] = coverageWarnings(reg);
 
-const slugsLock: SlugsLock = buildSlugsLock(corrections, reg);
-const rereadSlugsLock: SlugsLock = readSlugsLock(JSON.stringify(slugsLock));
-const slugProblems: string[] = checkSlugs(rereadSlugsLock, corrections, reg);
+const slugTable: SlugTable = buildSlugTable({
+  previous: emptyTable(),
+  tombstones: { tide: {}, current: {} },
+  reserved: { tide: new Set<string>(), current: new Set<string>() },
+  catalogues: {
+    tide: { stations: [{ id: "noaa/1", name: "Everett", region: "WA" }], digest: "sha256-x" },
+    current: { stations: [], digest: "sha256-y" },
+  },
+}).table;
+const rereadTable: SlugTable = readSlugTable(JSON.stringify(slugTable));
+const slugProblems: string[] = checkSlugTable(slugTable, rereadTable, { tide: {}, current: {} });
 
 // Reference every binding so noUnusedLocals stays on for real mistakes.
 export const surface = {
@@ -137,6 +146,6 @@ export const surface = {
   own, bare, noArgs, byIdAlone, bundledById, problems, limit, cleaned, slug, reread, movedIds, unchanged,
   reg, entry, regProblems, fromRegistry, pairedRef, rawRef, derivedRef, derivedLag,
   registryPositionProblems, correctionsCoverage, registryCoverage,
-  slugsLock, rereadSlugsLock, slugProblems,
+  slugTable, rereadTable, slugProblems,
   gatesBundled, gatesChs, gatesAll, gatesNarrow, narrowName,
 };
