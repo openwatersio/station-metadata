@@ -328,7 +328,11 @@ function readCatalogues(command, argv) {
       seen.add(id);
     }
 
-    catalogues[kind] = { stations, digest: digests.join("+") };
+    // Sorted, so the digest records *which* catalogues were read rather than
+    // the order they were typed on the command line. Unsorted, the same four
+    // files in a different argv order produce a different string and diff for
+    // no reason.
+    catalogues[kind] = { stations, digest: [...digests].sort().join("+") };
   }
   return catalogues;
 }
@@ -350,6 +354,22 @@ if (command === "slugs") {
     process.exit(1);
   }
 
+  // Every published slug is a URL segment, and the spec guarantees the shape.
+  // The ladder passes the id rung through toSlug for exactly this reason, but
+  // nothing checked the result before it became permanent - and permanent is
+  // the point. Refuse at the write boundary rather than ship one.
+  const malformed = [];
+  for (const kind of ["tide", "current"]) {
+    for (const [id, slug] of Object.entries(table[kind])) {
+      if (!/^[a-z0-9-]+$/.test(slug)) malformed.push(`${kind}/${id}: "${slug}"`);
+    }
+  }
+  if (malformed.length > 0) {
+    console.error(`slugs: ${malformed.length} allocated slug(s) are not /^[a-z0-9-]+$/ - nothing written`);
+    for (const problem of malformed.slice(0, 10)) console.error(`  ${problem}`);
+    process.exit(1);
+  }
+
   writeFileSync(slugsPath, JSON.stringify(table, null, 2) + "\n");
   writeFileSync(tombstonesPath, JSON.stringify(nextTombstones, null, 2) + "\n");
   const total = Object.keys(table.tide).length + Object.keys(table.current).length;
@@ -362,12 +382,21 @@ if (command === "check-slugs") {
   const committed = readArtifact(slugsPath, emptyTable());
   const tombstones = readArtifact(tombstonesPath, { tide: {}, current: {} });
 
+  // What this can catch: a station in the committed table that is absent from
+  // the catalogue and not tombstoned - a departure nobody recorded, whose slug
+  // is therefore free to be handed to a different station.
+  //
+  // What it cannot: a moved slug. `previous` here is the committed table and
+  // buildSlugTable preserves every entry in it verbatim, so `now !== was` is
+  // unreachable from this call site by construction. Detecting a move needs a
+  // prior table this commit cannot edit, which is the release-tag comparison in
+  // .github/workflows/ci.yml. Two checks, two different prior records.
   const { table } = buildSlugTable({ previous: committed, tombstones, reserved: reservedSlugs(), catalogues });
   const problems = checkSlugTable(committed, table, tombstones);
 
   if (problems.length > 0) {
     for (const problem of problems) console.error(`  ${problem}`);
-    console.error(`\n${problems.length} problem(s) - a published slug may not move`);
+    console.error(`\n${problems.length} problem(s) - a published slug may not be dropped without a tombstone`);
     process.exit(1);
   }
   const total = Object.keys(committed.tide).length + Object.keys(committed.current).length;
@@ -377,6 +406,6 @@ if (command === "check-slugs") {
 
 console.error("usage: station-metadata <validate|audit|lock|check|slugs|check-slugs> [args]");
 console.error("  slugs --tides <f> --currents <f>        allocate slugs for new stations");
-console.error("  check-slugs --tides <f> --currents <f>  fail if a published slug moved");
+console.error("  check-slugs --tides <f> --currents <f>  fail if a published slug went missing");
 console.error("  both flags repeat: the bundled catalogue is four files across two kinds");
 process.exit(1);

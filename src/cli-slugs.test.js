@@ -2,7 +2,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const cli = fileURLToPath(new URL("../bin/station-metadata.mjs", import.meta.url));
@@ -39,6 +41,37 @@ test("slugs refuses to run with only one kind", () => {
   const { code, out } = run(["slugs", "--tides", "some-tides.json"]);
   assert.equal(code, 1);
   assert.match(out, /--currents/);
+});
+
+test("slugs refuses to write a slug that is not a URL segment", () => {
+  // allocateSlugs preserves every existing entry verbatim, so a hand-edited
+  // table is the one way a slug that is not /^[a-z0-9-]+$/ reaches the file -
+  // and what lands in the file is permanent. The ladder's own output is safe by
+  // construction; this is the guard on the way in.
+  const dir = mkdtempSync(join(tmpdir(), "slug-shape-"));
+  const tides = join(dir, "tides.json");
+  const currents = join(dir, "currents.json");
+  writeFileSync(tides, JSON.stringify([{ id: "noaa/1", name: "Bad Slug!" }]));
+  writeFileSync(currents, JSON.stringify([]));
+
+  const slugsBefore = snapshot(slugsPath);
+  const tombstonesBefore = snapshot(tombstonesPath);
+  const handEdited = JSON.stringify({ catalogue: {}, tide: { "noaa/1": "Bad Slug!" }, current: {} });
+  try {
+    writeFileSync(slugsPath, handEdited);
+    writeFileSync(tombstonesPath, JSON.stringify({ tide: {}, current: {} }));
+    const { code, out } = run(["slugs", "--tides", tides, "--currents", currents]);
+    assert.equal(code, 1, out);
+    assert.match(out, /\[a-z0-9-\]/);
+    assert.match(out, /noaa\/1/);
+    // Nothing written: the file is still exactly what the run started from.
+    assert.equal(readFileSync(slugsPath, "utf8"), handEdited);
+  } finally {
+    restore(slugsPath, slugsBefore);
+    restore(tombstonesPath, tombstonesBefore);
+    unlinkSync(tides);
+    unlinkSync(currents);
+  }
 });
 
 // The registry owns three stations that appear in none of the four bundled
