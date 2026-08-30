@@ -15,7 +15,6 @@ export { cleanName } from "./clean.js";
 export { toSlug } from "./slug.js";
 export { buildLock, readLock, diffLock } from "./lock.js";
 export { currentGates, loadRegistry, validateRegistry } from "./registry.js";
-export { buildSlugsLock, readSlugsLock, checkSlugs } from "./slugs-lock.js";
 export { departures, DEPARTURE_LIMIT } from "./catalogue.js";
 export { buildSlugTable, emptyTable, readSlugTable, checkSlugTable } from "./slug-table.js";
 

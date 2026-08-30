@@ -310,26 +310,6 @@ export function validateRegistry(
   options?: { corrections?: Corrections },
 ): string[];
 
-/** Current slug per station id, as pinned by `station-metadata slugs`. */
-export interface SlugsLock {
-  note: string;
-  generated: string;
-  slugs: Record<string, string>;
-}
-
-/** Build the slugs lock from the current corrections and registry data. */
-export function buildSlugsLock(corrections: Corrections, registry: Registry): SlugsLock;
-
-/** Parse a slugs lock from its on-disk JSON string. */
-export function readSlugsLock(json: string): SlugsLock;
-
-/**
- * Check a slugs lock against the current corrections and registry data.
- * Fails when a station's slug differs from the lock and the lock's value is
- * not recorded in that station's `formerSlugs`.
- */
-export function checkSlugs(lock: SlugsLock, corrections: Corrections, registry: Registry): string[];
-
 /** The slug allocation record, partitioned by kind. Kind is a URL namespace: the same slug may appear in both. */
 export interface SlugTable {
   catalogue: Record<string, { digest: string; stations: number }>;
