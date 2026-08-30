@@ -10,7 +10,6 @@ export {
   validateAgainstStations,
   MAX_CORRECTION_KM,
 } from "./corrections.js";
-export { allocateSlugs } from "./allocate.js";
 export { cleanName } from "./clean.js";
 export { toSlug } from "./slug.js";
 export { buildLock, readLock, diffLock } from "./lock.js";

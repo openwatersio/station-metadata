@@ -158,20 +158,6 @@ export function cleanName(raw: string): string;
 /** Derive a URL slug from a display name. */
 export function toSlug(name: string): string;
 
-/** A station to be allocated a slug. */
-export interface StationForAllocation {
-  id: string;
-  name: string;
-  region: string;
-}
-
-/** Allocate a slug for every station that does not already have one. */
-export function allocateSlugs(options: {
-  stations: StationForAllocation[];
-  existing: Map<string, string>;
-  taken: Set<string>;
-}): Map<string, string>;
-
 /** One station's pinned position and audit verdict. */
 export interface LockEntry {
   position: [number, number];
