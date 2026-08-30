@@ -9,7 +9,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 pulls full history and all tags. The slug check below
+      # diffs against the previous release tag; the default shallow clone has
+      # no tags and no history past this commit, so that comparison would
+      # silently find nothing to compare against and pass every time.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -30,8 +36,8 @@ jobs:
         run: |
           # The prior record must be one this commit cannot edit. Comparing the
           # working tree against itself proves nothing once the table is an
-          # input rather than a derivation.
-          git fetch --tags --quiet
+          # input rather than a derivation. Checkout above already fetched
+          # full history and all tags, so no fetch is needed here.
           PREV=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV" ]; then echo "no previous tag; skipping"; exit 0; fi
           git show "$PREV:data/slugs.json" > /tmp/previous-slugs.json 2>/dev/null || {
