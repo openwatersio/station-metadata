@@ -172,3 +172,19 @@ noaa/9449988:
 # already clean, so only the context is corrected.
 noaa/9443551:
   context: Strait of Juan de Fuca
+
+# Two lighted buoys 4.4 m apart in the St Johns River, genuinely distinct -
+# different flood and ebb directions, different M2 amplitudes. NOAA files their
+# buoy numbers inconsistently: LB 20 carries its number in the *name*, LB 22
+# carries "LB 22" in the region and is named bare "Mile Point". The ladder reads
+# the name, so LB 20 was allocated `mile-point-lb-20` while LB 22 took the
+# generic `mile-point` - one buoy identified, its sibling reading as the
+# canonical station for the place when neither is.
+#
+# Both now carry their buoy number. `mile-point` belongs to neither and is
+# retained here so no future station can be handed it.
+noaa/jx0303:
+  name: Mile Point LB 22
+  context: St Johns River
+  slug: mile-point-lb-22
+  formerSlugs: [mile-point]
