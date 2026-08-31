@@ -56,7 +56,23 @@ jobs:
             } catch (err) {
               if (err.code !== "ENOENT") throw err;
             }
-            const problems = checkSlugTable(prev, now, tombstones);
+            // A move is legitimate only when the old slug is recorded in
+            // formerSlugs, which is what makes it a redirect rather than a
+            // dead link. Read from the committed artifacts so this agrees
+            // with what consumers actually receive.
+            const reserved = { tide: new Set(), current: new Set() };
+            const records = [
+              ...Object.values(JSON.parse(fs.readFileSync("data/registry.json", "utf8"))),
+              ...Object.values(JSON.parse(fs.readFileSync("data/corrections.json", "utf8"))),
+            ];
+            for (const record of records) {
+              if (!Array.isArray(record.formerSlugs)) continue;
+              for (const former of record.formerSlugs) {
+                if (record.kind === "tide" || record.kind === undefined) reserved.tide.add(former);
+                if (record.kind !== "tide") reserved.current.add(former);
+              }
+            }
+            const problems = checkSlugTable(prev, now, tombstones, reserved);
             if (problems.length) { for (const p of problems) console.error("  " + p); process.exit(1); }
             console.log("no published slug moved since " + process.env.PREV);
           ' --input-type=module

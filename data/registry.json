@@ -295,7 +295,10 @@
       -123.245
     ],
     "provider": "noaa",
-    "source": "NOAA CO-OPS station; position from the NOAA station page, not the CHS fitting pipeline that supplies the other gates. See PROVENANCE.md."
+    "source": "NOAA CO-OPS station; position from the NOAA station page, not the CHS fitting pipeline that supplies the other gates. See PROVENANCE.md.",
+    "formerSlugs": [
+      "turn-point"
+    ]
   },
   "chs-malibu-rapids": {
     "name": "Malibu Rapids",
@@ -348,7 +351,11 @@
     "provider": "chs",
     "kind": "tide",
     "aliases": [
-      "lighthouse park"
+      "lighthouse park",
+      "caulfeild cove"
+    ],
+    "formerSlugs": [
+      "point-atkinson-west-vancouver-bc"
     ]
   },
   "chs-vancouver": {
@@ -365,6 +372,9 @@
     ],
     "aliases": [
       "vancouver harbour"
+    ],
+    "formerSlugs": [
+      "vancouver-bc"
     ]
   },
   "chs-port-alberni": {
@@ -434,6 +444,9 @@
     "aliases": [
       "victoria harbour",
       "inner harbour"
+    ],
+    "formerSlugs": [
+      "victoria-harbour"
     ]
   },
   "chs-sooke": {

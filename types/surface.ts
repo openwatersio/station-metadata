@@ -28,6 +28,9 @@ import {
   emptyTable,
   readSlugTable,
   checkSlugTable,
+  findNearbyPairs,
+  haversineMetres,
+  NEARBY_METRES,
   type Station,
   type ResolvedStation,
   type Resolver,
@@ -37,6 +40,7 @@ import {
   type Registry,
   type RegistryStation,
   type SlugTable,
+  type NearbyPair,
 } from "../index.js";
 import { validatePositions, coverageWarnings } from "../validate-positions.js";
 import { classify } from "../src/audit.js";
@@ -139,6 +143,27 @@ const slugTable: SlugTable = buildSlugTable({
 }).table;
 const rereadTable: SlugTable = readSlugTable(JSON.stringify(slugTable));
 const slugProblems: string[] = checkSlugTable(slugTable, rereadTable, { tide: {}, current: {} });
+// The fourth argument is optional, and takes any iterable of slugs - a Set from
+// the CLI, an array from the CI step that reads the committed artifacts.
+const slugProblemsReserved: string[] = checkSlugTable(
+  slugTable,
+  rereadTable,
+  { tide: {}, current: {} },
+  { tide: new Set(["old-everett"]), current: [] },
+);
+
+const nearby: NearbyPair[] = findNearbyPairs(
+  [
+    { id: "chs-victoria", latitude: 48.424, longitude: -123.371 },
+    { id: "chs-victoria-harbour", latitude: 48.424363, longitude: -123.370828 },
+    { id: "no-position" },
+  ],
+  { metres: NEARBY_METRES },
+);
+const nearbyMetres: number = haversineMetres(
+  { latitude: 48.424, longitude: -123.371 },
+  { latitude: 48.424363, longitude: -123.370828 },
+);
 
 // Reference every binding so noUnusedLocals stays on for real mistakes.
 export const surface = {
@@ -146,6 +171,6 @@ export const surface = {
   own, bare, noArgs, byIdAlone, bundledById, problems, limit, cleaned, slug, reread, movedIds, unchanged,
   reg, entry, regProblems, fromRegistry, pairedRef, rawRef, derivedRef, derivedLag,
   registryPositionProblems, correctionsCoverage, registryCoverage,
-  slugTable, rereadTable, slugProblems,
+  slugTable, rereadTable, slugProblems, slugProblemsReserved, nearby, nearbyMetres,
   gatesBundled, gatesChs, gatesAll, gatesNarrow, narrowName,
 };
