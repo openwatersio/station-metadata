@@ -346,5 +346,52 @@ export function buildSlugTable(input: {
   catalogues: Record<string, { stations: CatalogueStation[]; digest: string }>;
 }): { table: SlugTable; tombstones: Tombstones; gone: string[] };
 
-/** Compare a table against an immutable prior one. Returns human-readable problems; empty means clean. */
-export function checkSlugTable(previous: SlugTable, current: SlugTable, tombstones: Tombstones): string[];
+/**
+ * Compare a table against an immutable prior one. Returns human-readable
+ * problems; empty means clean.
+ *
+ * `reserved` carries the slugs recorded in `formerSlugs`, which is what makes a
+ * move legitimate rather than a silently broken link. Omit it and every move is
+ * a problem.
+ */
+export function checkSlugTable(
+  previous: SlugTable,
+  current: SlugTable,
+  tombstones: Tombstones,
+  reserved?: { tide: Iterable<string>; current: Iterable<string> },
+): string[];
+
+/** A station with a position, for the duplicate-identity sweep. */
+export interface PositionedStation {
+  id: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+/** Two stations close enough together to be the same water entered twice. */
+export interface NearbyPair {
+  a: string;
+  b: string;
+  metres: number;
+}
+
+/**
+ * Candidate duplicate identities within one kind, nearest first.
+ *
+ * A pair is a candidate, never a verdict: two genuinely distinct stations can
+ * sit metres apart, so only a person can tell a duplicate from a pair of
+ * lighted buoys. Stations with no position are skipped.
+ */
+export function findNearbyPairs(
+  stations: PositionedStation[],
+  options?: { metres?: number },
+): NearbyPair[];
+
+/** Great-circle distance between two positions, in metres. */
+export function haversineMetres(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number },
+): number;
+
+/** Metres below which two stations are worth a second look. */
+export const NEARBY_METRES: number;

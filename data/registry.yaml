@@ -325,6 +325,12 @@ noaa-boundary-pass:
   source: >-
     NOAA CO-OPS station; position from the NOAA station page, not the CHS
     fitting pipeline that supplies the other gates. See PROVENANCE.md.
+  # That NOAA station is `noaa/PUG1717`, published as "Turn Point" - this entry
+  # records no provider id, which is how the join missed it and 4.0.0 gave one
+  # station two slugs 1.5 m apart. Both ids now resolve here. The curated name
+  # wins because this entry exists precisely to hold the gate's identity as
+  # currents-vault drops it.
+  formerSlugs: [turn-point]
 
 # --- Derived gates (kind: current + a `derived` block) ---
 # A current gate CHS publishes no current station for: slack does not come from
@@ -385,7 +391,11 @@ chs-point-atkinson:
   position: [49.337, -123.254]
   provider: chs
   kind: tide
-  aliases: [lighthouse park]
+  aliases: [lighthouse park, caulfeild cove]
+  # `chs-point-atkinson-2` is this same station, 63 m away, entered twice in the
+  # CHS catalogue. 4.0.0 allocated it a slug of its own; both ids now resolve
+  # here. See the duplicate-identity note above the sweep in src/positions.js.
+  formerSlugs: [point-atkinson-west-vancouver-bc]
 
 chs-vancouver:
   name: Vancouver
@@ -395,6 +405,9 @@ chs-vancouver:
   kind: tide
   cities: [Vancouver]
   aliases: [vancouver harbour]
+  # `chs-vancouver-2` is this same station, 40 m away, entered twice in the CHS
+  # catalogue. 4.0.0 allocated it a slug of its own; both ids now resolve here.
+  formerSlugs: [vancouver-bc]
 
 chs-port-alberni:
   name: Port Alberni
@@ -436,6 +449,10 @@ chs-victoria:
   kind: tide
   cities: [Victoria]
   aliases: [victoria harbour, inner harbour]
+  # `chs-victoria-harbour` is this same station, 42 m away, entered twice in the
+  # CHS catalogue - its whole name is already an alias here, so the curated
+  # entry knew about its own duplicate. Both ids now resolve here.
+  formerSlugs: [victoria-harbour]
 
 chs-sooke:
   name: Sooke

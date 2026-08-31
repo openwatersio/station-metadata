@@ -104,6 +104,34 @@ test("checkSlugTable reports a slug that moved", () => {
   assert.match(problems[0], /noaa\/1.*everett.*everett-wa/);
 });
 
+test("checkSlugTable accepts a move whose old slug is recorded in formerSlugs", () => {
+  // The documented escape hatch: a slug may move when the old value is recorded,
+  // because that turns it into a redirect rather than a dead link. This is what
+  // let the four duplicate identities 4.0.0 shipped collapse onto one slug each.
+  const before = { ...emptyTable(), tide: { "chs-vancouver-2": "vancouver-bc" } };
+  const after = { ...emptyTable(), tide: { "chs-vancouver-2": "vancouver" } };
+  const reserved = { tide: ["vancouver-bc"], current: [] };
+  assert.deepEqual(checkSlugTable(before, after, { tide: {}, current: {} }, reserved), []);
+});
+
+test("checkSlugTable still reports a move when formerSlugs records the wrong slug", () => {
+  // Recording *a* former slug does not excuse moving a different one, or the
+  // escape hatch would wave through every move on the station.
+  const before = { ...emptyTable(), tide: { "noaa/1": "everett" } };
+  const after = { ...emptyTable(), tide: { "noaa/1": "everett-wa" } };
+  const reserved = { tide: ["something-else"], current: [] };
+  const problems = checkSlugTable(before, after, { tide: {}, current: {} }, reserved);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /without "everett" in formerSlugs/);
+});
+
+test("checkSlugTable does not let one kind's formerSlugs excuse a move in the other", () => {
+  const before = { ...emptyTable(), current: { "noaa/1": "turn-point" } };
+  const after = { ...emptyTable(), current: { "noaa/1": "boundary-pass" } };
+  const reserved = { tide: ["turn-point"], current: [] };
+  assert.equal(checkSlugTable(before, after, { tide: {}, current: {} }, reserved).length, 1);
+});
+
 test("checkSlugTable is silent when a station is merely added", () => {
   const before = { ...emptyTable(), tide: { "noaa/1": "everett" } };
   const after = { ...emptyTable(), tide: { "noaa/1": "everett", "noaa/2": "la-push" } };

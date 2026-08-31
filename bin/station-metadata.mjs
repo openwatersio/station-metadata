@@ -9,6 +9,7 @@ import { validatePositions, coverageWarnings, coverageFailures } from "../src/va
 import { loadRegistry, validateRegistry } from "../src/registry.js";
 import { isWithinCoverage } from "../src/coastline.js";
 import { buildSlugTable, emptyTable, checkSlugTable } from "../src/slug-table.js";
+import { findNearbyPairs, NEARBY_METRES } from "../src/positions.js";
 import { DEPARTURE_LIMIT } from "../src/catalogue.js";
 import { fileURLToPath } from "node:url";
 
@@ -374,6 +375,25 @@ if (command === "slugs") {
   writeFileSync(tombstonesPath, JSON.stringify(nextTombstones, null, 2) + "\n");
   const total = Object.keys(table.tide).length + Object.keys(table.current).length;
   console.log(`wrote ${slugsPath} - ${total} station(s), ${gone.length} tombstoned`);
+
+  // Reported after the write, and never fatal: a pair is a candidate, not a
+  // verdict. Two real stations can sit metres apart, so only a person can tell
+  // a duplicate identity from a pair of lighted buoys. Failing closed on
+  // distance would block a legitimate allocation on a judgement it cannot make.
+  //
+  // This runs here rather than in CI because CI has no catalogue - the repo
+  // ships no stations file, and positions for provider rows live only in the
+  // packages passed to this command.
+  for (const kind of ["tide", "current"]) {
+    const pairs = findNearbyPairs(catalogues[kind].stations);
+    if (pairs.length === 0) continue;
+    console.log(`\n${kind}: ${pairs.length} pair(s) within ${NEARBY_METRES} m - review before release`);
+    console.log("  The ladder gives a duplicate identity its own unique slug, so");
+    console.log("  uniqueness passing proves nothing. Position is the only tell.");
+    for (const { a, b, metres } of pairs) {
+      console.log(`  ${metres.toFixed(1).padStart(6)} m  ${a} (${table[kind][a]})  <->  ${b} (${table[kind][b]})`);
+    }
+  }
   process.exit(0);
 }
 
@@ -391,8 +411,9 @@ if (command === "check-slugs") {
   // unreachable from this call site by construction. Detecting a move needs a
   // prior table this commit cannot edit, which is the release-tag comparison in
   // .github/workflows/ci.yml. Two checks, two different prior records.
-  const { table } = buildSlugTable({ previous: committed, tombstones, reserved: reservedSlugs(), catalogues });
-  const problems = checkSlugTable(committed, table, tombstones);
+  const reserved = reservedSlugs();
+  const { table } = buildSlugTable({ previous: committed, tombstones, reserved, catalogues });
+  const problems = checkSlugTable(committed, table, tombstones, reserved);
 
   if (problems.length > 0) {
     for (const problem of problems) console.error(`  ${problem}`);

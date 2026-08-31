@@ -81,9 +81,10 @@ export function buildSlugTable({ previous, tombstones, reserved, catalogues }) {
  * derivation, comparing it against the data it produced proves nothing: an edit
  * touching both is self-consistent and undetectable.
  */
-export function checkSlugTable(previous, current, tombstones) {
+export function checkSlugTable(previous, current, tombstones, reserved) {
   const problems = [];
   for (const kind of KINDS) {
+    const recorded = new Set(reserved?.[kind] ?? []);
     for (const [id, was] of Object.entries(previous[kind] ?? {})) {
       const now = (current[kind] ?? {})[id];
       if (now === undefined) {
@@ -97,8 +98,14 @@ export function checkSlugTable(previous, current, tombstones) {
             ? `${kind}/${id}: slug "${was}" disappeared without being tombstoned`
             : `${kind}/${id}: tombstoned as "${buried}" but was published as "${was}"`,
         );
-      } else if (now !== was) {
-        problems.push(`${kind}/${id}: slug moved from "${was}" to "${now}"`);
+      } else if (now !== was && !recorded.has(was)) {
+        // A move is allowed only when the old slug is recorded in `formerSlugs`,
+        // which is what turns it into a redirect instead of a dead link - see
+        // the `formerSlugs` block in registry.yaml. Unrecorded, it is exactly
+        // the silent break this check exists to catch.
+        problems.push(
+          `${kind}/${id}: slug moved from "${was}" to "${now}" without "${was}" in formerSlugs`,
+        );
       }
     }
   }
