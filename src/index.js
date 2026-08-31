@@ -18,6 +18,7 @@ export { buildLock, readLock, diffLock } from "./lock.js";
 export { currentGates, loadRegistry, validateRegistry } from "./registry.js";
 export { departures, DEPARTURE_LIMIT } from "./catalogue.js";
 export { buildSlugTable, emptyTable, readSlugTable, checkSlugTable } from "./slug-table.js";
+export { findNearbyPairs, haversineMetres, NEARBY_METRES } from "./positions.js";
 
 /**
  * The published slug table, flattened to one id → slug map.
