@@ -18,6 +18,21 @@ const KEEP = new Set([
   "US", "BC", "USCG", "LB", "ICW", "ICWW", "RR", "NM",
 ]);
 
+/**
+ * USPS state and territory abbreviations. A trailing one stays caps - NOAA
+ * ends a name with the state ("USCG Station NY", "Riverdale, N.Y.") and a
+ * title-cased "Ny" or "N.y." is wrong on a card. Position-guarded rather than
+ * KEEP entries: a state code is only a state in final position, so "LA PUSH"
+ * still calms to "La Push".
+ */
+const STATES = new Set([
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID",
+  "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO",
+  "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA",
+  "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+  "AS", "GU", "MP", "PR", "VI",
+]);
+
 /** 1 statute mile = 1.609344 km; 1 nautical mile = 1.852 km. */
 const NM_PER_MILE = 1.609344 / 1.852;
 
@@ -91,9 +106,10 @@ export function cleanName(raw) {
   name = toNauticalMiles(name);
   return name
     .split(" ")
-    .map((word, index) => {
+    .map((word, index, words) => {
       const letters = word.replace(/[^A-Za-z]/g, "");
       const shouting = letters.length > 1 && letters === letters.toUpperCase();
+      if (shouting && index === words.length - 1 && STATES.has(letters)) return word;
       return shouting ? titleCaseWord(word, index === 0) : word;
     })
     .join(" ");
