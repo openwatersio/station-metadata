@@ -190,5 +190,13 @@
   },
   "noaa/9443551": {
     "context": "Strait of Juan de Fuca"
+  },
+  "noaa/jx0303": {
+    "name": "Mile Point LB 22",
+    "context": "St Johns River",
+    "slug": "mile-point-lb-22",
+    "formerSlugs": [
+      "mile-point"
+    ]
   }
 }
