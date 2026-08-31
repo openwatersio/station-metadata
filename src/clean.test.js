@@ -50,6 +50,17 @@ test("keeps the abbreviations NOAA writes in caps", () => {
   assert.equal(cleanName("Seaboard Coast Line RR, Pinner Point"), "Seaboard Coast Line RR, Pinner Point");
 });
 
+// NOAA often ends a name with the state, written in caps: "USCG Station NY",
+// "Riverdale, N.Y.". A state code is only a state in final position - "LA
+// PUSH" still calms - which is why these are not KEEP entries (issue #26).
+test("a trailing state abbreviation stays caps, dotted or not", () => {
+  assert.equal(cleanName("USCG Station NY"), "USCG Station NY");
+  assert.equal(cleanName("RIVERDALE, N.Y."), "Riverdale, N.Y.");
+  assert.equal(cleanName("Menemsha Harbor, MA"), "Menemsha Harbor, MA");
+  assert.equal(cleanName("ALPINE, N.J."), "Alpine, N.J.");
+  assert.equal(cleanName("LA PUSH"), "La Push");
+});
+
 test("states distance in nautical miles, whatever unit the provider used", () => {
   // 1 statute mile = 1.609344 km; 1 nautical mile = 1.852 km.
   assert.equal(cleanName("Discovery Island, 7.6 mi. SSE of"), "Discovery Island, 6.6 nm SSE of");
