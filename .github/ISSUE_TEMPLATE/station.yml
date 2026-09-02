@@ -1,0 +1,47 @@
+name: Report a wrong or missing station
+description: A station's name, location or details look wrong, or a station you expect is missing.
+title: "[station] "
+labels: [station]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks. You don't need to know how this repo works. Tell us what you see and what it should be, and a maintainer will turn it into a fix that ships to every app using this data.
+  - type: input
+    id: station
+    attributes:
+      label: Which station?
+      description: The name as the app shows it. Add the station id if you have one (like `9447659` or `chs-dodd-narrows`).
+      placeholder: Everett, Port Gardner
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where did you see it?
+      description: The app or site, and a link to the station page if there is one.
+      placeholder: Slackwater, https://slackwater.xyz/tide/everett
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What's wrong?
+      options:
+        - The location is wrong (on land, wrong side of the harbour, wrong bay)
+        - The name or the place shown under it is wrong
+        - Search can't find it by a name people actually use
+        - The station is missing entirely
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: should
+    attributes:
+      label: What should it be?
+      description: The correct name, the correct spot (a description, a chart position, or a map link), the name locals use, or whatever else needs to change.
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How do you know?
+      description: Local knowledge, you've been there, a chart, the agency's own station page. Anything that helps a maintainer confirm it.

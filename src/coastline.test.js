@@ -7,7 +7,7 @@ import { isOnLand, inlandMetres, nearestWater, coverageBounds, coverageRegions, 
 test("the bundled coastline has not been generalised down to a handful of shapes", () => {
   // The 7 golden points below only prove those exact coordinates. A coarser
   // rebuild (the exact Natural Earth failure this package was built to
-  // avoid - see README "Data and licences") could keep all 7 correct while
+  // avoid - see CONTRIBUTING "Rebuilding the bundled data") could keep all 7 correct while
   // merging away small islands and inlets everywhere else. Feature count is
   // a cheap proxy for that: the built coastline has 4,318 features: a large
   // drop means an over-simplified rebuild, not a golden-point regression.
