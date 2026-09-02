@@ -7,10 +7,35 @@ const coastline = JSON.parse(
   readFileSync(fileURLToPath(new URL("../data/coastline.geojson", import.meta.url)), "utf8"),
 );
 
+// One bbox per feature, computed once, so isOnLand's scan of ~11k features is
+// four comparisons each and the ring walk (and turf's per-call setup) only
+// runs for the handful of features a probe could actually be inside (#2).
+// ponytail: a flat bbox scan, not a spatial index; add flatbush if this shows
+// up again once the coastline grows past ~100k features.
+for (const feature of coastline.features) feature.bbox = bboxOf(feature.geometry.coordinates);
+
+/** [minLon, minLat, maxLon, maxLat] of any GeoJSON coordinate nesting, extending `box` if given. */
+function bboxOf(coords, box = [Infinity, Infinity, -Infinity, -Infinity]) {
+  if (typeof coords[0] === "number") {
+    const [lon, lat] = coords;
+    if (lon < box[0]) box[0] = lon;
+    if (lat < box[1]) box[1] = lat;
+    if (lon > box[2]) box[2] = lon;
+    if (lat > box[3]) box[3] = lat;
+    return box;
+  }
+  for (const part of coords) bboxOf(part, box);
+  return box;
+}
+
 /** Is this position on land? */
 export function isOnLand(lat, lon) {
   const at = point([lon, lat]);
-  return coastline.features.some((feature) => booleanPointInPolygon(at, feature));
+  return coastline.features.some((feature) => {
+    const [minLon, minLat, maxLon, maxLat] = feature.bbox;
+    return lon >= minLon && lon <= maxLon && lat >= minLat && lat <= maxLat &&
+      booleanPointInPolygon(at, feature);
+  });
 }
 
 let bounds = null;
@@ -38,19 +63,10 @@ export function coverageRegions() {
 }
 
 function computedExtent() {
-  let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
-  const walk = (coords) => {
-    if (typeof coords[0] === "number") {
-      const [lon, lat] = coords;
-      if (lon < minLon) minLon = lon;
-      if (lon > maxLon) maxLon = lon;
-      if (lat < minLat) minLat = lat;
-      if (lat > maxLat) maxLat = lat;
-      return;
-    }
-    for (const part of coords) walk(part);
-  };
-  for (const feature of coastline.features) walk(feature.geometry.coordinates);
+  const [minLon, minLat, maxLon, maxLat] = coastline.features.reduce(
+    (box, feature) => bboxOf(feature.geometry.coordinates, box),
+    [Infinity, Infinity, -Infinity, -Infinity],
+  );
   return { minLat, maxLat, minLon, maxLon };
 }
 
