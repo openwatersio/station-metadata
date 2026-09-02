@@ -84,6 +84,14 @@ export function validateCorrections(map) {
       problems.push(`${id}: context repeats the name ("${record.name}" / "${record.context}")`);
     }
 
+    if (isString(record.context) && Array.isArray(record.cities) && record.cities.includes(record.context)) {
+      // A curated context names the water or landmark a station sits in; a
+      // town is what the derived tier already says, and "Nanaimo" under Dodd
+      // Narrows read as a derived label missing its province. Search keeps
+      // the town through `cities`.
+      problems.push(`${id}: context "${record.context}" is a town in cities - name the water or landmark instead`);
+    }
+
     if (record.slug !== undefined && isString(record.slug)) {
       if (!/^[a-z0-9-]+$/.test(record.slug)) {
         problems.push(`${id}: slug "${record.slug}" must be lowercase letters, digits and hyphens`);

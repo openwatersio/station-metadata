@@ -47,6 +47,16 @@ noaa/1:
   assert.match(validateCorrections(map)[0], /context repeats the name/);
 });
 
+test("rejects a context that is one of the record's own cities", () => {
+  const map = loadCorrections(`
+noaa/1:
+  name: Naval Air Station Whidbey Island
+  context: Oak Harbor
+  cities: [Oak Harbor]
+`);
+  assert.match(validateCorrections(map)[0], /context "Oak Harbor" is a town in cities/);
+});
+
 test("rejects a context that contains the name as a prefixed phrase", () => {
   const map = loadCorrections(`
 noaa/1:

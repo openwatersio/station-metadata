@@ -66,6 +66,11 @@ context containing the full station name as a whole-word phrase, so `Everett Har
 `Port of Everett` are refused, while `Port Townsend` / `Port Angeles`, different places sharing a
 word, passes.
 
+**A curated context names the water or landmark, not the town.** A town is what the derived tier
+already says (`Sidney, BC`), so a curated `Nanaimo` reads as a derived label missing its province.
+Dodd Narrows sits in `Northumberland Channel`; the town stays in `cities` for search. Validation
+rejects a context that is one of the record's own `cities`.
+
 **A correction is a fix, not a relocation.** When `validate` is given a stations file it also
 checks that a corrected position is within **5 km** of the one the provider published. The gauge
 is where it is; what is wrong is the coordinate written down for it. This check needs the
@@ -108,7 +113,7 @@ nothing to overlay onto. The record here *is* the station.
 ```yaml
 chs-dodd-narrows:
   name: Dodd Narrows
-  context: Nanaimo
+  context: Northumberland Channel
   position: [49.13546639419797, -123.81735084108287]
   provider: chs
   source: GSC West Coast Topo-Bathymetric DEM v2 hydraulic control section
