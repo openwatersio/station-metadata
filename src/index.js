@@ -70,7 +70,7 @@ export function createBundledResolver() {
 
 /**
  * The same resolver, deriving contexts from the national `data/places.json`
- * instead of the 19-town gazetteer — "~Nanaimo, BC" where the bundled resolver
+ * instead of the 19-town gazetteer — "Nanaimo, BC" where the bundled resolver
  * has nothing to say.
  *
  * The places list is a PARAMETER, not an import, and that is the whole point.

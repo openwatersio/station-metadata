@@ -58,9 +58,9 @@ Every lookup resolves highest-first:
 1. **Registry** — `data/registry.yaml`. Stations whose identity this package owns rather than
    corrects, because there is no upstream to correct. Resolves from an id alone.
 2. **Curated override** — anything in `data/corrections.yaml` wins over provider data.
-3. **Derived fallback** — nearest place, flagged `derived: true`, rendered `~Nanaimo, BC`. The
+3. **Derived fallback** — nearest place, flagged `derived: true`, rendered `Nanaimo, BC`. The
    pick is nearest-with-a-population-credit, so a town beats a neighbourhood a kilometre closer
-   (a Victoria gauge reads `~Victoria, BC`, not `~Tillicum, BC`). Nothing is offered past
+   (a Victoria gauge reads `Victoria, BC`, not `Tillicum, BC`). Nothing is offered past
    `DERIVED_MAX_KM`: a station in empty water gets an empty context, on purpose, so a consumer can
    fall through to its own coarse label rather than print a town 90 km away.
 

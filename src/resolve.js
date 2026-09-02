@@ -21,7 +21,7 @@ function splitQualifier(cleaned) {
 
 /**
  * Past this, no place is a useful label for a station. A gauge in a BC inlet
- * told it is "~Prince Rupert, BC" from 90 km away has learned nothing, and the
+ * told it is "Prince Rupert, BC" from 90 km away has learned nothing, and the
  * consumer's own coarse fallback (a coast, a province) is the more honest
  * answer. Stations beyond every place resolve to an empty context on purpose.
  */
@@ -32,8 +32,8 @@ export const DERIVED_MAX_KM = 40;
  * kilometres per decade of population above 1000.
  *
  * Pure nearest-wins picks the obscure name: a Victoria tide gauge came out
- * "~Tillicum, BC" — a neighbourhood 2 km off — over Victoria itself at 4 km,
- * and a Halifax gauge came out "~Dartmouth, NS" across the harbour. A reader
+ * "Tillicum, BC" — a neighbourhood 2 km off — over Victoria itself at 4 km,
+ * and a Halifax gauge came out "Dartmouth, NS" across the harbour. A reader
  * wants the place they have heard of. At 3 km/decade, Victoria (290k, ~2.5
  * decades → 7.4 km of credit) beats Tillicum, while genuinely local answers
  * survive: Sointula (513), Metchosin (5k) and Brentwood Bay (7.6k) all still
@@ -97,10 +97,13 @@ export function createResolver({
     if (!context) {
       const nearest = nearestPlace(station, gazetteer);
       if (nearest && !namesOverlap(name, nearest.name)) {
-        // "~" carries "near" in one character. The label sits under a station
-        // name in a mono caption on a phone, where the word costs a line break
-        // that the glyph does not.
-        context = `~${nearest.name}, ${nearest.region}`;
+        // Stated bare, like a curated context and like the region-only
+        // fallback below: "Barrington, NS". An earlier "~" hedged every derived
+        // label equally, whether the place was 2 km off or 39, which told a
+        // reader nothing. A label we get wrong is a correction to make, not a
+        // glyph to hedge with. `derived` still flags these for consumers that
+        // need to know how the context was arrived at.
+        context = `${nearest.name}, ${nearest.region}`;
         derived = true;
       } else if (nearest && !namesOverlap(name, nearest.region)) {
         // The nearest place restates the station's own name — "Ladysmith" by
