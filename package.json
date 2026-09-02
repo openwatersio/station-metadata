@@ -1,6 +1,6 @@
 {
   "name": "@openwaters/station-metadata",
-  "version": "4.1.2",
+  "version": "5.0.0",
   "description": "Provider-neutral tide and current station identity, metadata, search aliases, and corrected positions",
   "main": "src/index.js",
   "types": "index.d.ts",
