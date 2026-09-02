@@ -6,7 +6,7 @@ import { loadCorrections } from "./corrections.js";
 const VALID = `
 chs-dodd-narrows:
   name: Dodd Narrows
-  context: Nanaimo
+  context: Northumberland Channel
   position: [49.1344, -123.8171]
   provider: chs
   cities: [Nanaimo]
@@ -157,6 +157,18 @@ chs-x:
 `));
   assert.ok(problems.some((p) => /name must be a string/.test(p)));
   assert.ok(problems.some((p) => /cities must be an array of strings/.test(p)));
+});
+
+test("rejects a context that is one of the record's own cities", () => {
+  const problems = validateRegistry(loadRegistry(`
+chs-x:
+  name: Dodd Narrows
+  context: Nanaimo
+  position: [49.1344, -123.8171]
+  provider: chs
+  cities: [Nanaimo]
+`));
+  assert.match(problems[0], /context "Nanaimo" is a town in cities/);
 });
 
 test("an empty registry is valid", () => {

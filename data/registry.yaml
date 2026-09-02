@@ -136,7 +136,7 @@ chs-dent-rapids:
 
 chs-dodd-narrows:
   name: Dodd Narrows
-  context: Nanaimo
+  context: Northumberland Channel
   position: [49.13546639419797, -123.81735084108287]
   provider: chs
   cities: [Nanaimo]

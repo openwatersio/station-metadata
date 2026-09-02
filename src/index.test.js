@@ -25,7 +25,7 @@ test("the bundled resolver resolves a registry station from its id", async () =>
   const resolve = createBundledResolver();
   const r = resolve({ id: "chs-dodd-narrows" });
   assert.equal(r.name, "Dodd Narrows");
-  assert.equal(r.context, "Nanaimo");
+  assert.equal(r.context, "Northumberland Channel");
   assert.equal(r.latitude, 49.13546639419797);
   assert.equal(r.longitude, -123.81735084108287);
   assert.equal(r.corrected, false);
