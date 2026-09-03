@@ -1,6 +1,9 @@
 # Catalogue slug allocation
 
-**Status:** design, not built
+**Status:** shipped in 4.0.0 (#23). Kept as the design record; where it and the code
+disagree the code is right, notably the testing note saying a same-kind duplicate slug
+is rejected. Nothing rejects one, and #24 went on to share four slugs deliberately -
+see "Two ids may share one slug" in CONTRIBUTING.md.
 **Follows:** `2026-08-29-station-metadata-cutover-design.md`, which deliberately kept
 slugs unchanged. This is the next chapter, not a contradiction of it.
 **Unblocks:** station pages on `slackwater.xyz`, and through them
