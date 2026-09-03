@@ -19,14 +19,14 @@ who wants to understand how the data fits together.
    npm test
    npm run check:data
    node bin/station-metadata.mjs validate
-   node bin/station-metadata.mjs check-slugs
+   # check-slugs needs the provider catalogue files; see "Slugs" below
    ```
 
 5. Open a pull request. Do not push to `main`. CI, review, and the Open Waters CLA check must
    pass before merge.
 
 A position change needs a `reason`. A slug change needs the old slug recorded in `formerSlugs`
-and the slug lock regenerated (`node bin/station-metadata.mjs slugs`). Everything else is a
+and `data/slugs.json` regenerated (`node bin/station-metadata.mjs slugs`). Everything else is a
 one-line edit.
 
 ## The corrections file
@@ -157,8 +157,10 @@ that filter, not the choice of key, is what makes the join unambiguous. See
 [PROVENANCE.md](PROVENANCE.md) for why, and for the collisions that lie in wait if you skip it.
 
 **One file per station.** A station may not appear in both files; two sources of authority for
-one station is the bug, not a feature. Slugs must be unique across both, because URLs share one
-namespace, and `formerSlugs` is valid in both for the same reason.
+one station is the bug, not a feature. A hand-written `slug:` must be unique across both, because
+URLs share one namespace, and `formerSlugs` is valid in both for the same reason. (The allocated
+table has one deliberate exception, where two ids name one station — see "Two ids may share one
+slug".)
 
 **Positions.** A corrected `position` in the corrections file is checked for plausible distance
 from what the provider published; a registry position is not, because it *is* the published
@@ -213,27 +215,70 @@ act on.
 
 ## Slugs
 
-A slug is an API: it goes straight into a shareable URL (`slackwater-web` routes `/tide/<slug>`),
-so changing one silently is a breaking change shipped as a patch. A slug published in
-`data/slugs.json` never moves.
-
 ```bash
-npx station-metadata slugs        # writes data/slugs.lock.json
-npx station-metadata check-slugs  # exit 1 if a slug moved without being recorded
+# every catalogue file, for both kinds; both flags repeat
+node bin/station-metadata.mjs slugs \
+  --tides noaa-tides.json --tides chs-stations.json \
+  --currents noaa-currents.json --currents chs-current-gates.json
+# writes data/slugs.json and data/slug-tombstones.json
+
+npm run check:slugs   # exit 1 if a published slug vanished without a tombstone
 ```
 
-`data/slugs.lock.json` pins the current slug per station, because CI cannot tell a slug *changed*
-without knowing the previous value. `check-slugs` fails when a station's slug differs from the
-lock and the old value is not in that station's `formerSlugs`. Separately, `validate` rejects a
-new slug that collides with another station's current slug **or** its `formerSlugs` (a recycled
-slug would silently redirect old links to the wrong station, worse than a 404), plus a malformed
-`formerSlugs` entry. Move a slug and record its old value in `formerSlugs` in the same change,
-then regenerate the lock.
+A slug is an API: it goes straight into a shareable URL (`/tide/<slug>`), so a slug that moves
+breaks every link already shared under it, and a slug handed to a *different* station is worse —
+the old link resolves to the wrong water, confidently and with no error state.
 
-One judgment no check can make: only record a former slug when the new slug points at the **same
-place**. A genuine rename qualifies; a mislabel does not. Redirecting a mislabelled slug preserves
-a wrong link, where a 404 is the more honest outcome. A downstream consumer owns the redirect
-either way.
+So a name proposes a slug exactly once, at allocation, and `data/slugs.json` is the record from
+then on. `slugs` is incremental: every entry in the committed table is preserved verbatim and
+only stations with no slug are allocated, sorted by station id so the result does not depend on
+catalogue order. `resolve()` reads its `slug` straight out of that table — a station with no row
+resolves to `slug: ""` rather than a derived name, because a derived name is exactly what the
+table may have already published to somebody else.
+
+**Both kinds are mandatory, and every file for each.** A station absent from the input is
+indistinguishable from a station that has departed, and a departure is permanent: its slug moves
+into `data/slug-tombstones.json` and is never handed to another station. A forgotten `--tides`
+argument would read as thousands of departures. The command refuses to run without both flags,
+and refuses a run where more stations departed than the plausibility limit unless you pass
+`--accept-departures`. A station that later reappears reclaims its tombstoned slug.
+
+`check:slugs` rebuilds the table from the committed one and the same catalogue files, and fails
+when a station in the committed table is missing from the rebuild without a matching tombstone.
+It cannot detect a *moved* slug, and does not claim to: the committed table is its input, and a
+commit that edits the table and the data together is self-consistent. Move detection needs a
+prior table this commit cannot edit, which is why CI compares `data/slugs.json` against the copy
+at the previous release tag (`.github/workflows/ci.yml`). Two checks, two different prior records.
+
+`validate` covers the hand-curated side: it rejects a slug that collides with another station's
+slug **or** with any `formerSlugs` entry, and a malformed `formerSlugs`. One judgment no check can
+make: only record a former slug when the new slug points at the **same place**. A genuine rename
+qualifies; a mislabel does not — redirecting a mislabelled slug preserves a wrong link, where a
+404 is the more honest outcome. A downstream consumer owns the redirect either way.
+
+### Two ids may share one slug
+
+A slug is unique within a kind with one exception, and it is deliberate: when a catalogue holds
+the same water twice — a curated identity plus the provider's own row for it — **both ids are
+pointed at one slug**, so the pair is one URL rather than two pages for one station. Four are
+published today: tide `point-atkinson`, `vancouver` and `victoria`, each a `chs-*` entry beside
+the CHS catalogue's duplicate row, and current `boundary-pass` (`noaa-boundary-pass` and
+`noaa/PUG1717`, 1.5 m apart).
+
+Merging is a hand edit — the ladder always manufactures a unique slug, and a duplicate identity
+comes out as `vancouver` and `vancouver-bc`, which reads as careful disambiguation rather than as
+a bug. **Uniqueness passing is not evidence of anything; position is the only tell.** So `slugs`
+reports every pair within 100 m after writing, for a person to judge. To merge one: point the
+provider row's id at the curated slug in `data/slugs.json`, and record the retired slug in
+`formerSlugs` on the curated registry entry, which is what makes the old link redirect. A test
+holds that shape — a slug held by two ids must have exactly one registry-owned id, and that
+record must carry `formerSlugs`.
+
+Two limits worth knowing before trusting a clean sweep. The pair index is only complete to about
+1.1 km, so raising the threshold needs a bigger cell, not just a bigger number. And a NOAA
+subordinate row sits at a whole arc-minute, so a NOAA row duplicating a CHS or TICON station
+lands roughly a kilometre from it and never enters the 100 m report at all — compare names as
+well as positions when a batch of subordinates arrives.
 
 ## Pinning audit results
 

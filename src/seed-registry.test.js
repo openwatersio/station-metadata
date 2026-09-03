@@ -82,6 +82,41 @@ test("slugs are unique across the registry", () => {
   assert.equal(new Set(slugs).size, slugs.length);
 });
 
+// Four slugs are held by two ids each, on purpose: a curated identity and the
+// provider row for the same water, merged by #24 so both resolve to one URL.
+// The allocator cannot produce that - it is a hand edit it then preserves
+// verbatim - so this is the only thing standing between a deliberate merge and
+// a typo that silently points two stations at one page. What makes a merge
+// deliberate is the registry: one side must be a curated entry, and it must
+// record the retired slug in `formerSlugs`, which is what turns the other half
+// of the pair into a redirect instead of a dead link.
+//
+// Runs against the committed table, so unlike the catalogue-backed checks it
+// needs no provider files and CI actually runs it.
+test("a slug held by two ids is a documented merge, never an accident", () => {
+  for (const kind of ["tide", "current"]) {
+    const ids = new Map();
+    for (const [id, slug] of Object.entries(slugTable[kind])) {
+      if (!ids.has(slug)) ids.set(slug, []);
+      ids.get(slug).push(id);
+    }
+    for (const [slug, held] of ids) {
+      if (held.length === 1) continue;
+      const curated = held.filter((id) => registry.has(id));
+      assert.equal(
+        curated.length,
+        1,
+        `${kind}/${slug}: held by ${held.join(", ")} - a merged pair has exactly one registry-owned id`,
+      );
+      const record = registry.get(curated[0]);
+      assert.ok(
+        Array.isArray(record.formerSlugs) && record.formerSlugs.length > 0,
+        `${kind}/${slug}: ${curated[0]} absorbed ${held.filter((id) => id !== curated[0]).join(", ")} without recording the retired slug in formerSlugs`,
+      );
+    }
+  }
+});
+
 // #9: the coastline clip is derived from the registry's own extent, so every
 // gate - including the three northern ones (Blackney, Johnstone Strait central,
 // Weynton) that used to fall outside the Salish Sea clip - now sits within

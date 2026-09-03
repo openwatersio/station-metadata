@@ -74,6 +74,38 @@ test("slugs refuses to write a slug that is not a URL segment", () => {
   }
 });
 
+test("the nearby sweep sees a registry-only station, which has a position only the registry knows", () => {
+  // readCatalogues merges registry-only stations in so their published slugs
+  // are not tombstoned. It used to merge them as `{ id, name }` alone, and a
+  // station with no position is skipped by findNearbyPairs - so the one pair
+  // the sweep exists to catch, a curated identity duplicating a provider row,
+  // was invisible for exactly the stations most likely to be one: the curated
+  // half is registry-only by definition. noaa-boundary-pass and noaa/PUG1717
+  // are 1.5 m apart and #24 printed them; today's sweep found nothing.
+  const dir = mkdtempSync(join(tmpdir(), "slug-sweep-"));
+  const tides = join(dir, "tides.json");
+  const currents = join(dir, "currents.json");
+  writeFileSync(tides, JSON.stringify([]));
+  // The registry's own position for noaa-boundary-pass, to the metre.
+  writeFileSync(currents, JSON.stringify([
+    { id: "noaa/PUG1717", name: "Turn Point", latitude: 48.69121170043945, longitude: -123.24501037597656 },
+  ]));
+
+  const slugsBefore = snapshot(slugsPath);
+  const tombstonesBefore = snapshot(tombstonesPath);
+  try {
+    const { code, out } = run(["slugs", "--tides", tides, "--currents", currents, "--accept-departures"]);
+    assert.equal(code, 0, out);
+    assert.match(out, /noaa-boundary-pass/);
+    assert.match(out, /noaa\/PUG1717/);
+  } finally {
+    restore(slugsPath, slugsBefore);
+    restore(tombstonesPath, tombstonesBefore);
+    unlinkSync(tides);
+    unlinkSync(currents);
+  }
+});
+
 // The registry owns three stations that appear in none of the four bundled
 // catalogue files (chs-arran-rapids, noaa-boundary-pass, chs-malibu-rapids -
 // all `current`). This runs the real CLI against the real catalogue files, not

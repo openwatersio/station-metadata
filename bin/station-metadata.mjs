@@ -325,7 +325,12 @@ function readCatalogues(command, argv) {
     for (const [id, record] of registry) {
       if (seen.has(id)) continue;
       if ((record.kind === "tide" ? "tide" : "current") !== kind) continue;
-      stations.push({ id, name: record.name });
+      // With the position, not just the name: the nearby-pairs sweep below
+      // skips a station that has none, and a registry-only station is the
+      // curated half of exactly the duplicate-identity pair the sweep exists
+      // to surface (noaa-boundary-pass vs noaa/PUG1717, 1.5 m). Allocation
+      // itself ignores the field.
+      stations.push({ id, name: record.name, latitude: record.position[0], longitude: record.position[1] });
       seen.add(id);
     }
 

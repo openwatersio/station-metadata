@@ -469,12 +469,23 @@ test("a registry station with no published slug gets an empty one too", () => {
 
 const resources = process.env.RESOURCES;
 test(
-  "no station resolves to a slug published for a different station",
+  "every station resolves to exactly the slug the table publishes for it",
   { skip: resources ? false : "RESOURCES env var not set - skipping catalogue-backed test" },
   () => {
     // The whole catalogue, not a sample: a one-station check passed for years
     // while the resolver contradicted the table for 201 stations and handed
     // back another station's published slug for 194 of them.
+    //
+    // Agreeing with the table is now the whole check. A second assertion used
+    // to invert the table slug -> id and report a station whose slug "belongs"
+    // to someone else, and once the resolver read only the table that could no
+    // longer mean what it said: with the derivation gone, the only way to hold
+    // a slug published for another id is for two ids to share one deliberately,
+    // which #24 did four times. It reported those three tide pairs as theft on
+    // every run - and nobody saw it, because this test needs the provider
+    // catalogues and CI has none. A shared slug is checked where it belongs
+    // now, against the committed table and its registry: see the merge test in
+    // seed-registry.test.js, which CI does run.
     const table = JSON.parse(readFileSync(fileURLToPath(new URL("../data/slugs.json", import.meta.url)), "utf8"));
     const load = (name) => JSON.parse(readFileSync(`${resources}/${name}`, "utf8"));
     const catalogue = {
@@ -484,24 +495,17 @@ test(
     const resolveBundled = createBundledResolver();
 
     const contradictions = [];
-    const stolen = [];
     let checked = 0;
     for (const kind of ["tide", "current"]) {
-      const owner = new Map(Object.entries(table[kind]).map(([id, slug]) => [slug, id]));
       for (const station of catalogue[kind]) {
         checked++;
         const { slug } = resolveBundled(station);
         const published = table[kind][station.id];
         if (slug !== published) contradictions.push(`${kind}/${station.id}: resolve "${slug}" vs table "${published}"`);
-        const holder = owner.get(slug);
-        if (slug && holder !== undefined && holder !== station.id) {
-          stolen.push(`${kind}/${station.id} "${station.name}": resolve "${slug}", published for ${holder}`);
-        }
       }
     }
 
     assert.ok(checked > 4000, `expected the whole catalogue, resolved only ${checked} stations`);
-    assert.deepEqual(stolen.slice(0, 5), [], `${stolen.length} station(s) resolve to another station's published slug`);
     assert.deepEqual(contradictions.slice(0, 5), [], `${contradictions.length} station(s) contradict data/slugs.json`);
   },
 );
