@@ -5,8 +5,8 @@
       "stations": 5842
     },
     "current": {
-      "digest": "sha256-5dbd0b768df3a7fd50c38a961149d00debe261fd30e3d0e331553b0c160804b6+sha256-e1aecc6164ac9e44f691456f119ce39861fa3b75d67680e1523324fbad6ca5d8",
-      "stations": 2425
+      "digest": "sha256-8a083702ea123cd3d0caedb0a32f29d8f121e08bd6041c45437052dc57d6e438+sha256-e1aecc6164ac9e44f691456f119ce39861fa3b75d67680e1523324fbad6ca5d8",
+      "stations": 2416
     }
   },
   "tide": {
@@ -6286,14 +6286,7 @@
     "noaa/ACT3656": "grants-tomb",
     "noaa/ACT3671": "riverdale",
     "noaa/ACT3676": "mount-st-vincent-college",
-    "noaa/ACT3681": "dobbs-ferry",
-    "noaa/ACT3691": "tarrytown",
-    "noaa/ACT3696": "ossining",
-    "noaa/ACT3711": "peekskill",
     "noaa/ACT3721": "highland-falls",
-    "noaa/ACT3726": "west-point-off-duck-island",
-    "noaa/ACT3741": "new-hamburg",
-    "noaa/ACT3751": "hyde-park",
     "noaa/ACT3986": "manasquan-inlet",
     "noaa/ACT3991": "manasquan-r",
     "noaa/ACT3996": "point-pleasant-canal",
@@ -6450,7 +6443,6 @@
     "noaa/ACT5136": "turkey-point",
     "noaa/ACT5141": "spesutie-island",
     "noaa/ACT5146": "rocky-point-elk-neck",
-    "noaa/ACT5151": "red-point",
     "noaa/ACT5161": "thimble-shoal-channel-west-end",
     "noaa/ACT5171": "0-55-nm-east-of",
     "noaa/ACT5176": "0-2-nm-south-of",
@@ -7341,7 +7333,6 @@
     "noaa/NYH1932": "raritan-river-entrance",
     "noaa/NYH1933": "highlands-bridge",
     "noaa/NYH1934": "canarsie-midchannel",
-    "noaa/PCT0016": "magdalena-bay-entrance",
     "noaa/PCT0026": "point-loma-light",
     "noaa/PCT0031": "san-diego-bay-entrance",
     "noaa/PCT0036": "ballast-point",
