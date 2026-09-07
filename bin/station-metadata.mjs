@@ -59,7 +59,10 @@ function readStationsFile(command, stationsPath) {
     console.error(`${command}: ${stationsPath} must contain a JSON array of station objects`);
     process.exit(1);
   }
-  return stations;
+
+  // A reference-only record (slackwater-ios #269) is in the catalogue for
+  // a reduction, not as a station; it is never linked, so never slugged.
+  return stations.filter((s) => !s.referenceOnly);
 }
 
 const [command, stationsPath] = process.argv.slice(2);
