@@ -133,6 +133,19 @@ test("lock writes a lock listing every station", () => {
   });
 });
 
+test("a referenceOnly record is not a station: lock ignores it", () => {
+  withRealLockBackup(() => {
+    withFixtureStations([WATER_STATION, { ...ASHORE_STATION, referenceOnly: true }], (path) => {
+      const { status, stdout } = run(["lock", path]);
+      assert.equal(status, 0);
+      assert.match(stdout, /1 station/);
+
+      const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+      assert.deepEqual(Object.keys(lock.stations), ["test/water"]);
+    });
+  });
+});
+
 test("check exits 0 on a matching lock, and 1 naming a station that moved", () => {
   withRealLockBackup(() => {
     withFixtureStations(FIXTURE_STATIONS, (path) => {
