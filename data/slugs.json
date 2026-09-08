@@ -1,11 +1,11 @@
 {
   "catalogue": {
     "tide": {
-      "digest": "sha256-0fee753961685a76c0555c7fa959a393439aa9b9de3e7d6357a7b9c72d5b760c+sha256-a006bb799fb247265e5de429fd1a911644a7e33448089e7bd1f2e1385ddce675",
+      "digest": "sha256-0fe097ea989276f77a6b702c2a847e36ca51f9d3200add42a6810e726fc8839a+sha256-0fee753961685a76c0555c7fa959a393439aa9b9de3e7d6357a7b9c72d5b760c",
       "stations": 5842
     },
     "current": {
-      "digest": "sha256-969be21894772d8d655eb21f66a40ef29ca75ca790b1b8687adc26a7852d21b3+sha256-e1aecc6164ac9e44f691456f119ce39861fa3b75d67680e1523324fbad6ca5d8+sha256-eb8f11460ecf484b95dc2d67fbefb3b26c4535ced28349c1ee99edcdf7760d7f",
+      "digest": "sha256-969be21894772d8d655eb21f66a40ef29ca75ca790b1b8687adc26a7852d21b3+sha256-e1aecc6164ac9e44f691456f119ce39861fa3b75d67680e1523324fbad6ca5d8+sha256-fcbebdf245a57a47b7ded02fedd70269fbc486e6f5db621d9b84f218dd4f50f6",
       "stations": 2559
     }
   },
@@ -1962,6 +1962,7 @@
     "noaa/8654769": "ocracoke",
     "noaa/8655133": "oriental",
     "noaa/8655151": "cedar-island-atlantic-nc",
+    "noaa/8655875": "sea-level",
     "noaa/8656084": "core-creek-bridge",
     "noaa/8656201": "davis",
     "noaa/8656225": "north-river-bridge",
@@ -2515,7 +2516,6 @@
     "noaa/8723872": "channel-five",
     "noaa/8723873": "jewfish-hole",
     "noaa/8723879": "long-key-bight",
-    "noaa/8723887": "long-key-lake",
     "noaa/8723899": "long-key",
     "noaa/8723906": "conch-key",
     "noaa/8723912": "toms-harbor-cut",
