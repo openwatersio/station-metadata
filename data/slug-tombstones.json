@@ -1,4 +1,6 @@
 {
-  "tide": {},
+  "tide": {
+    "noaa/8723887": "long-key-lake"
+  },
   "current": {}
 }
