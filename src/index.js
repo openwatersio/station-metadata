@@ -31,7 +31,7 @@ export { findNearbyPairs, haversineMetres, NEARBY_METRES } from "./positions.js"
  * This is ~200 KB of JSON loading eagerly with the package root, and that is
  * the price of one slug vocabulary: a consumer that routes `/tide/<slug>`
  * cannot derive the name any more, so it needs this table whichever way it
- * arrives. The data still kept out of reach is `places.json` (~890 KB) and the
+ * arrives. The data still kept out of reach is `places.json` (~1.5 MB) and the
  * coastline, neither of which every consumer needs.
  */
 const publishedSlugs = new Map([
@@ -74,7 +74,7 @@ export function createBundledResolver() {
  * has nothing to say.
  *
  * The places list is a PARAMETER, not an import, and that is the whole point.
- * At ~890 KB it is the second thing after the coastline that must not load
+ * At ~1.5 MB it is the second thing after the coastline that must not load
  * eagerly with this module: `createBundledResolver` is called at runtime in a
  * browser (slackwater-web's src/tides.ts), whose entry bundle is 580 KB, and
  * importing places here would nearly triple it for an offline-first PWA's

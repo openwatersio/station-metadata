@@ -40,6 +40,12 @@ noaa/9447659:
   context: Port Gardner
   slug: everett
   cities: [Everett, Marysville]
+  location:
+    locality: Everett
+    region: WA
+    regionCode: US-WA
+    country: United States
+    countryCode: US
   aliases: [port gardner, everett marina]
 
 noaa/9442396:
@@ -55,6 +61,7 @@ noaa/9442396:
 | `name` / `context` | The two-line display. Context is whatever most usefully distinguishes the place: a water body, island group, region, county, or characteristic. |
 | `slug` | Canonical URL segment. Lives here so a name fix and its URL move together. |
 | `cities` | Nearest settlements, for search. Not for display. |
+| `location` | Optional structured display location: `locality`, short `region`, ISO 3166-2 `regionCode`, full `country`, and ISO 3166-1 alpha-2 `countryCode`. Omitted components fall through to source or derived place data. |
 | `aliases` | What someone might type. Local names, former names, misspellings. |
 | `formerSlugs` | Slugs this station used to resolve to. See [Slugs](#slugs). |
 | `position` | A corrected `[lat, lon]`. Requires `reason`. |

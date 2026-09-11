@@ -58,6 +58,7 @@ const aliases: string[] = resolved.aliases;
 const corrected: boolean = resolved.corrected;
 const lat: number = resolved.latitude;
 const formerSlugs: string[] = resolved.formerSlugs;
+const locationCountryCode: string = resolved.location.countryCode;
 // Optional, so it must not be assignable to a bare string.
 const verified: string | undefined = resolved.positionVerified;
 
@@ -167,7 +168,7 @@ const nearbyMetres: number = haversineMetres(
 
 // Reference every binding so noUnusedLocals stays on for real mistakes.
 export const surface = {
-  resolved, name, context, cities, aliases, corrected, lat, verified, formerSlugs,
+  resolved, name, context, cities, aliases, corrected, lat, verified, formerSlugs, locationCountryCode,
   own, bare, noArgs, byIdAlone, bundledById, problems, limit, cleaned, slug, reread, movedIds, unchanged,
   reg, entry, regProblems, fromRegistry, pairedRef, rawRef, derivedRef, derivedLag,
   registryPositionProblems, correctionsCoverage, registryCoverage,

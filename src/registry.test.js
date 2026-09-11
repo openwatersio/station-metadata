@@ -23,6 +23,17 @@ test("accepts a valid registry", () => {
   assert.deepEqual(validateRegistry(loadRegistry(VALID)), []);
 });
 
+test("rejects a non-object structured location", () => {
+  const problems = validateRegistry(loadRegistry(`
+chs-x:
+  name: Test
+  position: [49, -123]
+  provider: chs
+  location: Nanaimo
+`));
+  assert.ok(problems.some((p) => /location must be an object/.test(p)));
+});
+
 test("accepts kind tide or current, rejects any other value", () => {
   const withKind = (kind) =>
     `chs-x:\n  name: X\n  context: Somewhere\n  position: [48.4, -123.3]\n  provider: chs\n  kind: ${kind}\n`;

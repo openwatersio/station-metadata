@@ -39,6 +39,8 @@ const INTERNAL_EXPORTS = new Set([
   "namesOverlap", // names.js: helper shared by resolve.js and validateCorrections, not a consumer-facing utility
   "sharesMeaningfulWord", // names.js: helper used only by validateAgainstStations, not a consumer-facing utility
   "distanceKm", // distance.js: shared leaf so resolve.js and corrections.js need not import each other; not API anyone asked for
+  "locationOf", // location.js: shared resolver implementation, not a second public location API
+  "validateLocation", // location.js: shared by the two public validators, not called directly
 ]);
 
 test("every public-API module's named exports are re-exported from index.js", async () => {

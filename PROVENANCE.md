@@ -24,7 +24,7 @@ source.
 | Field | Origin |
 |-------|--------|
 | `name` | **Hand-written label.** Renaming and re-casing shouting provider names (`CHERRY POINT` → `Cherry Point`) is the whole point of this package — original editorial work, reviewed by a person. |
-| `context`, `cities`, `aliases` | **Hand-written here.** Not present in provider data; original. |
+| `context`, `cities`, `aliases`, curated `location` | **Hand-written here.** Not present in provider data; original. |
 | `kind` | **Our editorial classification** (`tide` / `current`), assigned by a person against the membership rules the registry writes down — not a field copied from any provider. |
 | `tideReference` / `derived.reference` | **Editorial pairing.** Which tide reference port's water to show beside a current gate: the *nearest* `kind: tide` port in the gate's tidal regime, chosen from the positions in this file and, where one exists, confirmed against standard published secondary-reference practice (e.g. Seymour Narrows → Campbell River). A judgment about real water, expressed as an internal registry key on both sides — no provider handle. |
 | `position` | **Independently derived and human-verified.** Current-gate positions come from the `chs-constituents` fitting pipeline and `currents-vault` pass frontmatter, cross-checked against `chs-constituents/stations/salish-sea.json`. Tide reference-port positions come from CHS's public prediction-station list, matched by position and confirmed in water by the coastline audit. Both are audited against a coastline and reviewed by a person — a hand-picked set of factual coordinates that happen to agree with CHS, not a lifted copy of a CHS station export. This row is about **authoring** — how a person sourced a coordinate once. How a *consumer* joins at runtime is the next row, and the two are easy to conflate. |
@@ -42,8 +42,9 @@ not station identity — it is a list of **towns**, used only to derive a fallba
 
 It is a filtered extract of **GeoNames cities500, CC BY 4.0** — a third-party dataset,
 redistributed under its licence with attribution in [NOTICE](NOTICE). The bundled coastline
-is also third-party data and is attributed there. Neither dataset contains tide or current
-station records:
+is also third-party data and is attributed there. The derived place record keeps locality,
+administrative region, ISO subdivision and country codes, country name, position and population.
+Neither dataset contains tide or current station records:
 
 - The rule is *don't redistribute a **provider's** station file* — CHS's or NOAA's list of the
   things we publish records about. GeoNames publishes no tide or current stations, so nothing

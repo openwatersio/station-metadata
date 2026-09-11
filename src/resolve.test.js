@@ -17,12 +17,26 @@ noaa/8:
   context: Guemes Channel
   position: [48.5163, -122.6142]
   reason: inland
+  location:
+    locality: Anacortes
+    region: WA
+    regionCode: US-WA
+    country: United States
+    countryCode: US
 `);
 
 // Minimal gazetteer: name, lat, lon.
 const gazetteer = [
-  { name: "Forks", region: "WA", latitude: 47.95, longitude: -124.385 },
-  { name: "Everett", region: "WA", latitude: 47.979, longitude: -122.202 },
+  {
+    name: "Forks", region: "WA", regionCode: "US-WA",
+    country: "United States", countryCode: "US",
+    latitude: 47.95, longitude: -124.385,
+  },
+  {
+    name: "Everett", region: "WA", regionCode: "US-WA",
+    country: "United States", countryCode: "US",
+    latitude: 47.979, longitude: -122.202,
+  },
 ];
 
 // The published allocation table, id -> slug. It is the only source of a
@@ -61,6 +75,61 @@ test("context falls back to the nearest gazetteer place", () => {
   const r = resolve({ id: "noaa/2", name: "Jim Creek", latitude: 48.187, longitude: -124.063 });
   assert.equal(r.context, "Forks, WA");
   assert.equal(r.derived, true);
+});
+
+test("location keeps locality, region, and country independently selectable", () => {
+  const r = resolve({ id: "noaa/2", name: "Jim Creek", latitude: 48.187, longitude: -124.063 });
+  assert.deepEqual(r.location, {
+    locality: "Forks",
+    region: "WA",
+    regionCode: "US-WA",
+    country: "United States",
+    countryCode: "US",
+  });
+});
+
+test("a curated location overrides the derived place", () => {
+  const r = resolve({ id: "noaa/8", name: "ANACORTES", latitude: 47.979, longitude: -122.202 });
+  assert.equal(r.location.locality, "Anacortes");
+});
+
+test("provider location components outrank the derived place", () => {
+  const r = resolve({
+    id: "noaa/provider-location",
+    name: "Test",
+    latitude: 47.979,
+    longitude: -122.202,
+    location: { locality: "Mukilteo" },
+  });
+  assert.equal(r.location.locality, "Mukilteo");
+  assert.equal(r.location.countryCode, "US");
+});
+
+test("undefined provider components do not erase derived location", () => {
+  const r = resolve({
+    id: "noaa/partial-location",
+    name: "Test",
+    latitude: 47.979,
+    longitude: -122.202,
+    location: { locality: undefined },
+  });
+  assert.equal(r.location.locality, "Everett");
+});
+
+test("derived location uses a corrected position", () => {
+  const corrected = loadCorrections(`
+noaa/moved:
+  position: [48, -123]
+  reason: corrected position
+`);
+  const moved = createResolver({
+    corrections: corrected,
+    gazetteer: [
+      { name: "Published Place", region: "WA", latitude: 48, longitude: -122 },
+      { name: "Corrected Place", region: "BC", latitude: 48, longitude: -123 },
+    ],
+  })({ id: "noaa/moved", name: "Test", latitude: 48, longitude: -122 });
+  assert.equal(moved.location.locality, "Corrected Place");
 });
 
 test("no place is offered beyond DERIVED_MAX_KM", () => {
@@ -304,6 +373,13 @@ const registry = new Map([
     context: "Nanaimo",
     position: [49.1344, -123.8171],
     provider: "chs",
+    location: {
+      locality: "Nanaimo",
+      region: "BC",
+      regionCode: "CA-BC",
+      country: "Canada",
+      countryCode: "CA",
+    },
     cities: ["Nanaimo"],
     aliases: ["dodd"],
   }],
@@ -323,6 +399,13 @@ test("a registry station resolves from its id alone", () => {
   assert.equal(r.latitude, 49.1344);
   assert.equal(r.longitude, -123.8171);
   assert.deepEqual(r.cities, ["Nanaimo"]);
+  assert.deepEqual(r.location, {
+    locality: "Nanaimo",
+    region: "BC",
+    regionCode: "CA-BC",
+    country: "Canada",
+    countryCode: "CA",
+  });
   assert.equal(r.corrected, false);
   assert.equal(r.derived, false);
   assert.deepEqual(r.formerSlugs, []);

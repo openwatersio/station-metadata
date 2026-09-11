@@ -1,6 +1,7 @@
 import { parse } from "yaml";
 import { distanceKm } from "./distance.js";
 import { namesOverlap, sharesMeaningfulWord } from "./names.js";
+import { validateLocation } from "./location.js";
 
 /**
  * Parse the corrections file into a Map keyed by provider station ID.
@@ -34,6 +35,7 @@ export function validateCorrections(map) {
   const formerSlugOwners = new Map();
 
   for (const [id, record] of map) {
+    problems.push(...validateLocation(record.location).map((problem) => `${id}: ${problem}`));
     for (const field of ["name", "context", "slug", "reason", "positionVerified"]) {
       if (record[field] !== undefined && !isString(record[field])) {
         problems.push(`${id}: ${field} must be a string`);

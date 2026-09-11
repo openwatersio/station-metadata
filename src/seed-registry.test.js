@@ -17,6 +17,12 @@ const corrections = loadCorrections(read("corrections.yaml"));
 const slugTable = JSON.parse(read("slugs.json"));
 const slugs = new Map([...Object.entries(slugTable.tide), ...Object.entries(slugTable.current)]);
 const resolve = createResolver({ registry, corrections, slugs });
+const resolveWithPlaces = createResolver({
+  registry,
+  corrections,
+  slugs,
+  gazetteer: JSON.parse(read("places.json")),
+});
 
 test("the shipped registry is valid against the shipped corrections", () => {
   assert.deepEqual(validateRegistry(registry, { corrections }), []);
@@ -74,6 +80,15 @@ test("every station resolves with a name, a context and a position", () => {
     assert.equal(typeof r.longitude, "number", `${id} has no longitude`);
     assert.equal(r.corrected, false);
     assert.equal(r.derived, false);
+  }
+});
+
+test("every registry station resolves with region and country metadata", () => {
+  for (const id of registry.keys()) {
+    const { location } = resolveWithPlaces({ id });
+    for (const field of ["region", "regionCode", "country", "countryCode"]) {
+      assert.notEqual(location[field], "", `${id} has no location.${field}`);
+    }
   }
 });
 

@@ -1,6 +1,7 @@
 import { cleanName } from "./clean.js";
 import { namesOverlap } from "./names.js";
 import { distanceKm } from "./distance.js";
+import { locationOf } from "./location.js";
 
 /**
  * Split a cleaned name on NOAA's comma-qualifier convention: "Friday Harbor,
@@ -61,7 +62,7 @@ export const RECOGNITION_KM = 3;
  *   - `data/gazetteer.json` — 19 hand-curated Salish towns, what
  *     `createBundledResolver` uses. Also answers "where is the *user*", where
  *     a place name is a stable key for a saved choice.
- *   - `data/places.json` — 9,660 GeoNames places, national coverage, what
+ *   - `data/places.json` — 9,667 GeoNames places, national coverage, what
  *     `createPlacesResolver` uses. Labels a *station*; the names are captions
  *     nobody stores. Opt-in because it is ~890 KB, and the consumers that want
  *     it are build-time generators rather than browser bundles.
@@ -77,12 +78,14 @@ export function createResolver({
 } = {}) {
   return function resolve(station) {
     const owned = registry.get(station.id);
-    if (owned) return resolveOwned(station.id, owned, slugs);
+    if (owned) return resolveOwned(station.id, owned, slugs, gazetteer);
 
     const override = corrections.get(station.id) ?? {};
     const split = splitQualifier(cleanName(station.name));
     const name = override.name ?? split.primary;
     const slug = publishedSlug(station.id, slugs);
+    const position = override.position ?? [station.latitude, station.longitude];
+    const nearest = nearestPlace({ latitude: position[0], longitude: position[1] }, gazetteer);
 
     // A context that restates the name tells the reader nothing - true whether
     // it comes from the raw name's own qualifier or from a nearest-town
@@ -95,7 +98,6 @@ export function createResolver({
       context = split.context;
     }
     if (!context) {
-      const nearest = nearestPlace(station, gazetteer);
       if (nearest && !namesOverlap(name, nearest.name)) {
         // Stated bare, like a curated context and like the region-only
         // fallback below: "Barrington, NS". An earlier "~" hedged every derived
@@ -117,8 +119,6 @@ export function createResolver({
       }
     }
 
-    const position = override.position ?? [station.latitude, station.longitude];
-
     const aliases = new Set([
       name.toLowerCase(),
       ...(slug ? [slug] : []),
@@ -137,6 +137,7 @@ export function createResolver({
       corrected: Boolean(override.position),
       derived,
       formerSlugs: override.formerSlugs ?? [],
+      location: locationOf(nearest, station.location, override.location),
     };
     // Only present when the correction sets it - an always-there
     // `positionVerified: undefined` key is an output no one asked for.
@@ -163,7 +164,7 @@ export function createResolver({
  * `undefined`, and rather than silently substituting a fallback position - a
  * registry station with no position is a real error to fix, not paper over.
  */
-function resolveOwned(id, owned, slugs) {
+function resolveOwned(id, owned, slugs, gazetteer) {
   const position = owned.position;
   if (!Array.isArray(position) || typeof position[0] !== "number" || typeof position[1] !== "number") {
     throw new Error(`registry station "${id}" has no valid position - run validateRegistry before resolving`);
@@ -188,6 +189,10 @@ function resolveOwned(id, owned, slugs) {
     corrected: false,
     derived: false,
     formerSlugs: owned.formerSlugs ?? [],
+    location: locationOf(
+      nearestPlace({ latitude: position[0], longitude: position[1] }, gazetteer),
+      owned.location,
+    ),
     // The registry was currents-only until tide reference ports arrived, so an
     // entry with no `kind` is a current gate. Defaulting here (not in the data)
     // keeps the 19 existing entries untouched while the resolved record always

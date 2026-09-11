@@ -27,6 +27,50 @@ test("accepts a valid file", () => {
   assert.deepEqual(validateCorrections(loadCorrections(VALID)), []);
 });
 
+test("rejects a malformed structured location", () => {
+  const map = loadCorrections(`
+noaa/1:
+  location:
+    locality: Everett
+    regionCode: WA
+    countryCode: USA
+`);
+  const problems = validateCorrections(map);
+  assert.ok(problems.some((p) => /regionCode must be an ISO 3166-2 code/.test(p)));
+  assert.ok(problems.some((p) => /countryCode must be an ISO 3166-1 alpha-2 code/.test(p)));
+});
+
+test("location codes are empty or mutually consistent ISO codes", () => {
+  const empty = loadCorrections(`
+noaa/1:
+  location:
+    regionCode: ""
+    countryCode: ""
+`);
+  assert.deepEqual(validateCorrections(empty), []);
+
+  const bad = loadCorrections(`
+noaa/1:
+  location:
+    regionCode: US-WA
+    countryCode: CA
+noaa/2:
+  location:
+    countryCode: ZZ
+noaa/3:
+  location:
+    regionCode: US-QQ
+    countryCode: US
+noaa/4:
+  location:
+    countryCode: UK
+`);
+  const problems = validateCorrections(bad);
+  assert.ok(problems.some((p) => /regionCode must start with countryCode/.test(p)));
+  assert.equal(problems.filter((p) => /countryCode must be a supported/.test(p)).length, 2);
+  assert.ok(problems.some((p) => /regionCode must be a supported/.test(p)));
+});
+
 test("requires a reason whenever a position is corrected", () => {
   const map = loadCorrections(`
 noaa/1:

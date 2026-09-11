@@ -39,6 +39,10 @@ resolve({ id: "noaa/9447659", name: "Everett", latitude: 47.98, longitude: -122.
 //   context: "Port Gardner",     ← curated; the published data has none
 //   slug: "everett",
 //   cities: ["Everett", "Marysville"],
+//   location: {
+//     locality: "Everett", region: "WA", regionCode: "US-WA",
+//     country: "United States", countryCode: "US",
+//   },
 //   aliases: ["everett", "port gardner", "everett marina"],
 //   latitude: 47.98, longitude: -122.223,
 //   corrected: false, derived: false,
@@ -77,10 +81,14 @@ Every lookup resolves highest-first through four tiers:
 4. **Source data**: the provider's own name, cleaned. Only ALL-CAPS words are re-cased; distances
    are restated in nautical miles.
 
+`location` keeps locality, administrative region and country independently selectable. `regionCode`
+uses ISO 3166-2 and `countryCode` uses ISO 3166-1 alpha-2; unavailable components are empty strings.
+This maps cleanly to geocoder and Schema.org fields without baking one display string into the data.
+
 **Runs in the browser.** `createBundledResolver` imports its data as JSON, so it needs no
 filesystem and works unchanged in a bundle: about 7 KB for corrections, gazetteer and registry,
 plus the published slug table (`data/slugs.json`, ~55 KB gzipped). The `yaml` parser tree-shakes
-away unless you call `loadCorrections` yourself. For national town coverage pass the ~890 KB
+away unless you call `loadCorrections` yourself. For national town coverage pass the ~1.5 MB
 `data/places.json` to `createPlacesResolver`; it belongs in a build step, not a browser bundle.
 
 **Current gates.** Use `currentGates()` to select the registry entries you can fetch a live current

@@ -199,6 +199,7 @@ chs-johnstone-strait-central:
   context: Port Neville
   position: [50.4717, -126.1367]
   provider: chs
+  location: {region: BC, regionCode: CA-BC, country: Canada, countryCode: CA}
 
 chs-juan-de-fuca-east:
   name: Juan de Fuca - East
@@ -234,6 +235,7 @@ chs-nakwakto-rapids:
   position: [51.0967, -127.5033]
   provider: chs
   kind: current
+  location: {region: BC, regionCode: CA-BC, country: Canada, countryCode: CA}
   aliases: [turret rock, tremble island, seymour inlet, belize inlet]
   source: >-
     The sole entrance to the Seymour and Belize Inlet complex, at the east end
@@ -350,6 +352,7 @@ chs-malibu-rapids:
   position: [50.1626, -123.8515]
   provider: chs
   kind: current
+  location: {region: BC, regionCode: CA-BC, country: Canada, countryCode: CA}
   aliases: [princess louisa, malibu islet]
   magnitudeNote: 9 kn flood & ebb
   source: >-

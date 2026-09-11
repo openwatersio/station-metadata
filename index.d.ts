@@ -14,6 +14,22 @@ export interface Station {
   name: string;
   latitude: number;
   longitude: number;
+  /** Provider-supplied location components. Curated metadata takes precedence; the gazetteer fills gaps. */
+  location?: Partial<StationLocation>;
+}
+
+/** Independently selectable geographic components for display and map/search integrations. */
+export interface StationLocation {
+  /** City, town, village, or municipality; equivalent to Google's `locality`. */
+  locality: string;
+  /** Short state/province display label, such as `WA` or `BC`. */
+  region: string;
+  /** ISO 3166-2 subdivision code, such as `US-WA` or `CA-BC`. */
+  regionCode: string;
+  /** Full country display name. */
+  country: string;
+  /** ISO 3166-1 alpha-2 country code. */
+  countryCode: string;
 }
 
 /**
@@ -37,6 +53,9 @@ export interface StationRef {
 export interface GazetteerPlace {
   name: string;
   region: string;
+  regionCode?: string;
+  country?: string;
+  countryCode?: string;
   latitude: number;
   longitude: number;
   /**
@@ -53,6 +72,8 @@ export interface Correction {
   context?: string;
   slug?: string;
   cities?: string[];
+  /** Structured location fields; any omitted component falls through to source or derived data. */
+  location?: Partial<StationLocation>;
   aliases?: string[];
   /** Slugs this station used to resolve to. A consumer builds a redirect map from these. */
   formerSlugs?: string[];
@@ -76,6 +97,8 @@ export interface ResolvedStation {
    */
   slug: string;
   cities: string[];
+  /** Structured components; an unavailable component is the empty string. */
+  location: StationLocation;
   aliases: string[];
   latitude: number;
   longitude: number;
@@ -118,7 +141,7 @@ export function createBundledResolver(): Resolver;
 /**
  * The same resolver, deriving contexts from the national `data/places.json`
  * rather than the 19-town gazetteer. The list is a parameter because it is
- * ~890 KB and must not load eagerly into a browser bundle:
+ * ~1.5 MB and must not load eagerly into a browser bundle:
  *
  *     import places from "@openwaters/station-metadata/data/places.json" with { type: "json" };
  *     const resolve = createPlacesResolver(places);
@@ -249,6 +272,8 @@ export interface RegistryStation {
   context?: string;
   slug?: string;
   cities?: string[];
+  /** Structured location fields; any omitted component is derived from the gazetteer. */
+  location?: Partial<StationLocation>;
   aliases?: string[];
   /** Slugs this station used to resolve to. A consumer builds a redirect map from these. */
   formerSlugs?: string[];

@@ -37,6 +37,15 @@ const WATER = [`${NE}/ne_10m_coastline.geojson`, `${NE}/ne_10m_lakes.geojson`];
  * would triple the file for nothing.
  */
 const COUNTRIES = new Set(["US", "CA", "PR", "VI", "GU", "AS", "MP"]);
+const COUNTRY_NAME = {
+  US: "United States",
+  CA: "Canada",
+  PR: "Puerto Rico",
+  VI: "U.S. Virgin Islands",
+  GU: "Guam",
+  AS: "American Samoa",
+  MP: "Northern Mariana Islands",
+};
 
 /**
  * GeoNames admin1 for Canada is a numeric code; for the US it is already the
@@ -145,6 +154,9 @@ for (const row of rows) {
   places.push({
     name: f[1],
     region,
+    regionCode: f[8] === "US" || f[8] === "CA" ? `${f[8]}-${region}` : "",
+    country: COUNTRY_NAME[f[8]],
+    countryCode: f[8],
     // 4 decimals is ~11 m — far finer than a town's own centre is meaningful
     // to, and it takes ~100 KB off the file every consumer imports.
     latitude: Number(latitude.toFixed(4)),

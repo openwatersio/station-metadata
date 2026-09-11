@@ -15,6 +15,13 @@ test("createBundledResolver resolves a known station regardless of cwd", async (
     const r = resolve({ id: "noaa/9447659", name: "Everett", latitude: 47.98, longitude: -122.223 });
     assert.equal(r.name, "Everett");
     assert.equal(r.context, "Port Gardner");
+    assert.deepEqual(r.location, {
+      locality: "Everett",
+      region: "WA",
+      regionCode: "US-WA",
+      country: "United States",
+      countryCode: "US",
+    });
   } finally {
     process.chdir(originalCwd);
   }
@@ -42,6 +49,24 @@ test("the bundled resolver still resolves an overlay station", async () => {
   const r = resolve({ id: "noaa/9447659", name: "Everett", latitude: 47.98, longitude: -122.223 });
   assert.equal(r.name, "Everett");
   assert.equal(r.context, "Port Gardner");
+});
+
+test("the national places resolver carries ISO location components", async () => {
+  const { createPlacesResolver } = await import("./index.js");
+  const places = JSON.parse(readFileSync(new URL("../data/places.json", import.meta.url), "utf8"));
+  const r = createPlacesResolver(places)({
+    id: "test/nanaimo",
+    name: "Departure Bay",
+    latitude: 49.1664,
+    longitude: -123.94,
+  });
+  assert.deepEqual(r.location, {
+    locality: "Nanaimo",
+    region: "BC",
+    regionCode: "CA-BC",
+    country: "Canada",
+    countryCode: "CA",
+  });
 });
 
 test("index.js never references the coastline module", () => {

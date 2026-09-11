@@ -1,6 +1,7 @@
 import { parse } from "yaml";
 import { namesOverlap } from "./names.js";
 import { toSlug } from "./slug.js";
+import { validateLocation } from "./location.js";
 import bundledRegistry from "../data/registry.json" with { type: "json" };
 
 /**
@@ -104,6 +105,7 @@ export function validateRegistry(registry, { corrections = new Map() } = {}) {
   const formerSlugOwners = new Map();
 
   for (const [id, record] of registry) {
+    problems.push(...validateLocation(record.location).map((problem) => `${id}: ${problem}`));
     for (const field of ["name", "provider"]) {
       if (!isNonEmptyString(record[field])) {
         problems.push(
