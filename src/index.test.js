@@ -44,6 +44,24 @@ test("the bundled resolver still resolves an overlay station", async () => {
   assert.equal(r.context, "Port Gardner");
 });
 
+test("relative NOAA names include the waterway they reference", async () => {
+  const { createBundledResolver } = await import("./index.js");
+  const resolve = createBundledResolver();
+  const cases = [
+    ["noaa/8537535", "1 n.mi. above entrance, N.J.", "1 nm above entrance, Mad Horse Creek"],
+    ["noaa/8537731", "0.8 n.mi. above entrance", "0.8 nm above entrance, Alloway Creek"],
+    ["noaa/8537753", "2.5 n.mi. above entrance", "2.5 nm above entrance, Alloway Creek"],
+    ["noaa/8677566", "8 miles above mouth", "7.0 nm above mouth, Little Satilla River"],
+    ["noaa/8677833", "2.5 miles above mouth", "2.2 nm above mouth, Little Satilla River"],
+    ["noaa/8722481", "3 miles above A1A highway bridge", "2.6 nm above A1A highway bridge, Loxahatchee River"],
+    ["noaa/TEC3531", "Below Spring Bluff", "Below Spring Bluff, Little Satilla River"],
+  ];
+
+  for (const [id, name, expected] of cases) {
+    assert.equal(resolve({ id, name, latitude: 0, longitude: 0 }).name, expected, id);
+  }
+});
+
 test("index.js never references the coastline module", () => {
   // Importing the library must not pull in the 3.6 MB coastline (only
   // audit-related code needs it). A static check on the source is enough:
