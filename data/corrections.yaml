@@ -190,3 +190,24 @@ noaa/jx0303:
   context: St Johns River
   slug: mile-point-lb-22
   formerSlugs: [mile-point]
+
+noaa/8537535:
+  name: 1 nm above entrance, Mad Horse Creek
+
+noaa/8537731:
+  name: 0.8 nm above entrance, Alloway Creek
+
+noaa/8537753:
+  name: 2.5 nm above entrance, Alloway Creek
+
+noaa/8677566:
+  name: 7.0 nm above mouth, Little Satilla River
+
+noaa/8677833:
+  name: 2.2 nm above mouth, Little Satilla River
+
+noaa/8722481:
+  name: 2.6 nm above A1A highway bridge, Loxahatchee River
+
+noaa/TEC3531:
+  name: Below Spring Bluff, Little Satilla River
