@@ -321,3 +321,5 @@ Runtime imports stay browser-safe. The coastline parse remains behind the explic
 
 Maintainers release only from a protected `vX.Y.Z` GitHub Release. `publish.yml` owns npm
 publishing through OIDC trusted publishing; never add an npm token to the workflow.
+
+A fix or feature PR bumps the package version in that same PR, so main is always ready to release. `npm version <patch|minor|major> --no-git-tag-version` updates `package.json` and `package-lock.json` together. Docs-only PRs don't bump.
